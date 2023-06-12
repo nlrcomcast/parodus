@@ -137,7 +137,7 @@ int main( int argc, char **argv)
 
 const char *rdk_logger_module_fetch(void)
 {
-    return "LOG.RDK.PARODUS";
+    return "NULL";
 }
 
 /*----------------------------------------------------------------------------*/
