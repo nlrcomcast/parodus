@@ -53,7 +53,7 @@ const char * contentTypeList[]={
 };
 
 void printSendMsgData(char* status, int qos, char* dest, char* transaction_uuid) {
-	ParodusInfo("status: %s, qos: %d, dest: %s, transaction_uuid: %s\n", (status!=NULL)?status:"NULL", qos, (dest!=NULL)?dest:"NULL", (transaction_uuid!=NULL)?transaction_uuid:"NULL");
+	//ParodusInfo("status: %s, qos: %d, dest: %s, transaction_uuid: %s\n", (status!=NULL)?status:"NULL", qos, (dest!=NULL)?dest:"NULL", (transaction_uuid!=NULL)?transaction_uuid:"NULL");
 }
 
 bool highQosValueCheck(int qos)
@@ -718,7 +718,7 @@ int sendXmidtEventToServer(XmidtMsg *msgnode, wrp_msg_t * msg, rbusMethodAsyncHa
 
 		if(msg->u.event.payload != NULL)
 		{
-			ParodusInfo("Notification payload: %s\n",msg->u.event.payload);
+			//ParodusInfo("Notification payload: %s\n",msg->u.event.payload);
 			notif_wrp_msg->u.event.payload = (void *)msg->u.event.payload;
 			notif_wrp_msg->u.event.payload_size = msg->u.event.payload_size;
 			ParodusPrint("payload size %lu\n", notif_wrp_msg->u.event.payload_size);
