@@ -62,7 +62,7 @@ int addToList( wrp_msg_t **msg)
     int retStatus = -1;
 
     sock = nn_socket( AF_SP, NN_PUSH );
-    ParodusPrint("sock created for adding entries to list: %d\n", sock);
+    ParodusInfo("sock created for adding entries to list: %d\n", sock);
     if(sock >= 0)
     {
             int t = NANO_SOCKET_SEND_TIMEOUT_MS;
@@ -302,14 +302,14 @@ int checkClientStatus(char *serviceName)
 	temp = get_global_node();
 	while (NULL != temp)
 	{
-		ParodusPrint("node is pointing to temp->service_name %s \n",temp->service_name);
+		ParodusInfo("node is pointing to temp->service_name %s \n",temp->service_name);
 		// Sending message to registered clients
 		if( strcmp(serviceName, temp->service_name) == 0)
 		{
 			release_global_node ();
 			return 1;
 		}
-		ParodusPrint("checking the next item in the list\n");
+		ParodusInfo("checking the next item in the list\n");
 		temp= temp->next;
 	}
 	release_global_node ();

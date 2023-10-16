@@ -56,7 +56,7 @@ void rbus_log_handler(
     int threadId,
     char* message)
 {
-    ParodusPrint("threadId %d\n", threadId);
+    ParodusInfo("threadId %d\n", threadId);
     const char* slevel = "";
 
     if(level < RBUS_LOG_ERROR)
@@ -76,7 +76,7 @@ void rbus_log_handler(
 void registerRbusLogger()
 {
 	rbus_registerLogHandler(rbus_log_handler);
-	ParodusPrint("Registered rbus log handler\n");
+	ParodusInfo("Registered rbus log handler\n");
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
@@ -154,11 +154,11 @@ void processWebconfigUpstreamEvent(rbusHandle_t handle, rbusEvent_t const* event
 		    eventMsg->u.event.partner_ids = partnersList;
 		    if(event_msg->u.event.transaction_uuid)
 		    {
-			  ParodusPrint("Inside Trans id in PARODUS_rbus\n");
+			  ParodusInfo("Inside Trans id in PARODUS_rbus\n");
 		    }
 		    else
 		    {
-			  ParodusPrint("Assigning NULL to trans id RBUS\n");
+			  ParodusInfo("Assigning NULL to trans id RBUS\n");
 			  eventMsg->u.event.transaction_uuid = NULL;
 		    }
 
@@ -200,7 +200,7 @@ void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscr
 void eventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription )
 {
     (void)subscription;
-    ParodusPrint("Handling event inside eventReceiveHandler\n");
+    ParodusInfo("Handling event inside eventReceiveHandler\n");
     (void)rbus_Handle;
     char * interface = NULL;
     rbusValue_t newValue = rbusObject_GetValue(event->data, "value");

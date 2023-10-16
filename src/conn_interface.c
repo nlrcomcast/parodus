@@ -86,7 +86,7 @@ void createSocketConnection(void (* initKeypress)())
 #ifdef FEATURE_DNS_QUERY
 	register_ucresolv_logger (__cimplog);
 #endif
-    ParodusPrint("Configure nopoll thread handlers in Parodus\n");
+    ParodusInfo("Configure nopoll thread handlers in Parodus\n");
     nopoll_thread_handlers(&createMutex, &destroyMutex, &lockMutex, &unlockMutex);
     ctx = nopoll_ctx_new();
     if (!ctx) 

@@ -279,11 +279,11 @@ void createCurlheader(struct curl_slist *list, struct curl_slist **header_list)
     char *uuid = NULL;
 
     snprintf(buf, MAX_BUF_SIZE, "X-Midt-Mac-Address: %s", get_parodus_cfg()->hw_mac);
-    ParodusPrint("mac_header formed %s\n", buf);
+    ParodusInfo("mac_header formed %s\n", buf);
     list = curl_slist_append(list, buf);
 
     snprintf(buf, MAX_BUF_SIZE, "X-Midt-Serial-Number: %s", get_parodus_cfg()->hw_serial_number);
-    ParodusPrint("serial_header formed %s\n", buf);
+    ParodusInfo("serial_header formed %s\n", buf);
     list = curl_slist_append(list, buf);
 
     uuid = generate_trans_uuid();

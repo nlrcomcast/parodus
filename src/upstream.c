@@ -81,7 +81,7 @@ void packMetaData()
 {
     char boot_time[256]={'\0'};
     //Pack the metadata initially to reuse for every upstream msg sending to server
-    ParodusPrint("-------------- Packing metadata ----------------\n");
+    ParodusInfo("-------------- Packing metadata ----------------\n");
     sprintf(boot_time, "%d", get_parodus_cfg()->boot_time);
     struct data meta_pack[METADATA_COUNT] = {
             {HW_MODELNAME, get_parodus_cfg()->hw_model},
@@ -103,7 +103,7 @@ void packMetaData()
 
     if (metaPackSize > 0) 
     {
-	    ParodusPrint("metadata encoding is successful with size %zu\n", metaPackSize);
+	    ParodusInfo("metadata encoding is successful with size %zu\n", metaPackSize);
     }
     else
     {
@@ -127,7 +127,7 @@ void *handle_upstream()
     int bytes =0;
     void *buf;
 
-    ParodusPrint("******** Start of handle_upstream ********\n");
+    ParodusInfo("******** Start of handle_upstream ********\n");
 
     sock = nn_socket( AF_SP, NN_PULL );
     if(sock >= 0)
@@ -138,7 +138,7 @@ void *handle_upstream()
         {
             ParodusError ("Unable to set socket receive timeout (errno=%d, %s)\n",errno, strerror(errno));
         }
-        ParodusPrint("Nanomsg bind with get_parodus_cfg()->local_url  %s\n", get_parodus_cfg()->local_url);
+        ParodusInfo("Nanomsg bind with get_parodus_cfg()->local_url  %s\n", get_parodus_cfg()->local_url);
         bind = nn_bind(sock, get_parodus_cfg()->local_url);
         if(bind < 0)
         {
@@ -172,10 +172,10 @@ void *handle_upstream()
                     {
                         UpStreamMsgQ = message;
 
-                        ParodusPrint("Producer added message\n");
+                        ParodusInfo("Producer added message\n");
                         pthread_cond_signal(&nano_con);
                         pthread_mutex_unlock (&nano_mut);
-                        ParodusPrint("mutex unlock in producer thread\n");
+                        ParodusInfo("mutex unlock in producer thread\n");
                     }
                     else
                     {
@@ -209,7 +209,7 @@ void *handle_upstream()
     {
         ParodusError("Unable to create socket (errno=%d, %s)\n",errno, strerror(errno));
     }
-    ParodusPrint ("End of handle_upstream\n");
+    ParodusInfo ("End of handle_upstream\n");
     return 0;
 }
 
@@ -231,17 +231,17 @@ void *processUpstreamMessage()
     while(FOREVER())
     {
         pthread_mutex_lock (&nano_mut);
-        ParodusPrint("mutex lock in consumer thread\n");
+        ParodusInfo("mutex lock in consumer thread\n");
         if(UpStreamMsgQ != NULL)
         {
             UpStreamMsg *message = UpStreamMsgQ;
             UpStreamMsgQ = UpStreamMsgQ->next;
             pthread_mutex_unlock (&nano_mut);
-            ParodusPrint("mutex unlock in consumer thread\n");
+            ParodusInfo("mutex unlock in consumer thread\n");
 
             /*** Decoding Upstream Msg to check msgType ***/
             /*** For MsgType 9 Perform Nanomsg client Registration else Send to server ***/	
-            ParodusPrint("---- Decoding Upstream Msg ----\n");
+            ParodusInfo("---- Decoding Upstream Msg ----\n");
 
             rv = wrp_to_struct( message->msg, message->len, WRP_BYTES, &msg );
             if(rv > 0)
@@ -255,7 +255,7 @@ void *processUpstreamMessage()
                     if(get_numOfClients() !=0)
                     {
                         matchFlag = 0;
-                        ParodusPrint("matchFlag reset to %d\n", matchFlag);
+                        ParodusInfo("matchFlag reset to %d\n", matchFlag);
                         while(temp!=NULL)
                         {
                             if(strcmp(temp->service_name, msg->u.reg.service_name)==0)
@@ -295,7 +295,7 @@ void *processUpstreamMessage()
 
                                         if(status == 0)
                                         {
-                                            ParodusPrint("sent auth status to reg client\n");
+                                            ParodusInfo("sent auth status to reg client\n");
                                         }
                                         matchFlag = 1;
                                         break;
@@ -306,19 +306,19 @@ void *processUpstreamMessage()
                                     ParodusError("Unable to create socket (errno=%d, %s)\n",errno, strerror(errno));
                                 }
                             }
-                            ParodusPrint("checking the next item in the list\n");
+                            ParodusInfo("checking the next item in the list\n");
                             temp= temp->next;
                         }	
                     }
-                    ParodusPrint("matchFlag is :%d\n", matchFlag);
+                    ParodusInfo("matchFlag is :%d\n", matchFlag);
                     if((matchFlag == 0) || (get_numOfClients() == 0))
                     {
-                        ParodusPrint("Adding nanomsg clients to list\n");
+                        ParodusInfo("Adding nanomsg clients to list\n");
                         status = addToList(&msg);
-                        ParodusPrint("addToList status is :%d\n", status);
+                        ParodusInfo("addToList status is :%d\n", status);
                         if(status == 0)
                         {
-                            ParodusPrint("sent auth status to reg client\n");
+                            ParodusInfo("sent auth status to reg client\n");
                         }
                     }
                     release_global_node ();
@@ -348,11 +348,11 @@ void *processUpstreamMessage()
                         eventMsg->u.event.partner_ids = partnersList;
 			if(msg->u.event.transaction_uuid)
 			{
-				ParodusPrint("Inside Trans id in PARODUS\n");
+				ParodusInfo("Inside Trans id in PARODUS\n");
 			}
 			else
 			{
-				ParodusPrint("Assigning NULL to trans id\n");
+				ParodusInfo("Assigning NULL to trans id\n");
 				eventMsg->u.event.transaction_uuid = NULL;
 			}
 

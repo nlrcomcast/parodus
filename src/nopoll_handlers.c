@@ -96,15 +96,15 @@ void listenerOnMessage_queue(noPollCtx * ctx, noPollConn * conn, noPollMsg * msg
 		}
 
         pthread_mutex_lock (&g_mutex);		
-        ParodusPrint("mutex lock in producer thread\n");
+        ParodusInfo("mutex lock in producer thread\n");
 
         if(ParodusMsgQ == NULL)
         {
             ParodusMsgQ = message;
-            ParodusPrint("Producer added message\n");
+            ParodusInfo("Producer added message\n");
             pthread_cond_signal(&g_cond);
             pthread_mutex_unlock (&g_mutex);
-            ParodusPrint("mutex unlock in producer thread\n");
+            ParodusInfo("mutex unlock in producer thread\n");
         }
         else
         {
@@ -123,7 +123,7 @@ void listenerOnMessage_queue(noPollCtx * ctx, noPollConn * conn, noPollMsg * msg
         ParodusError("Memory allocation is failed\n");
     }
 	previous_msg = NULL;
-    ParodusPrint("*****Returned from listenerOnMessage_queue*****\n");
+    ParodusInfo("*****Returned from listenerOnMessage_queue*****\n");
 }
 
 /**
@@ -162,7 +162,7 @@ void listenerOnCloseMessage (noPollCtx * ctx, noPollConn * conn, noPollPtr user_
     int closeStatus;
     char * defaultReason = "SSL_Socket_Close";
 
-    ParodusPrint("listenerOnCloseMessage(): mutex lock in producer thread\n");
+    ParodusInfo("listenerOnCloseMessage(): mutex lock in producer thread\n");
 
     closeStatus = nopoll_conn_get_close_status (conn);
     if( closeStatus == 1006 && !get_global_reconnect_status())
@@ -187,6 +187,6 @@ void listenerOnCloseMessage (noPollCtx * ctx, noPollConn * conn, noPollPtr user_
     else
     	ParodusInfo("Not Setting the close and retry connection as interface is down\n");
 
-    ParodusPrint("listenerOnCloseMessage(): mutex unlock in producer thread\n");
+    ParodusInfo("listenerOnCloseMessage(): mutex unlock in producer thread\n");
 }
 

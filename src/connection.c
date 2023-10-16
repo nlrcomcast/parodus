@@ -670,9 +670,11 @@ int keep_trying_to_connect (create_connection_ctx_t *ctx,
     
     while (!g_shutdown)
     {
+      ParodusInfo("keep_trying_to_connect inside");
       set_extra_headers (ctx);
 
       rtn = connect_and_wait (ctx);
+      ParodusInfo("connect_and_wait after");      
       if (rtn == CONN_WAIT_SUCCESS)
         return true;
 
@@ -743,12 +745,12 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
         return nopoll_false;
   }
 
-	ParodusPrint("BootTime In sec: %d\n", get_parodus_cfg()->boot_time);
+	ParodusInfo("BootTime In sec: %d\n", get_parodus_cfg()->boot_time);
 	ParodusInfo("Received reboot_reason as:%s\n", get_parodus_cfg()->hw_last_reboot_reason);
 	ParodusInfo("Received reconnect_reason as:%s\n", reconnect_reason);
 	
 	max_retry_count = (int) get_parodus_cfg()->webpa_backoff_max;
-	ParodusPrint("max_retry_count is %d\n", max_retry_count );
+	ParodusInfo("max_retry_count is %d\n", max_retry_count );
 
 	memset (&conn_ctx, 0, sizeof(create_connection_ctx_t));
 	conn_ctx.nopoll_ctx = ctx;
@@ -766,6 +768,7 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
 	while (!g_shutdown)
 	{
 	  set_current_server (&conn_ctx);
+  ParodusInfo("keep_trying_to_connect before");  
 	  if (keep_trying_to_connect (&conn_ctx, &backoff_timer)) {
 		// Don't reuse the redirect server during reconnect
 		free_server (&conn_ctx.server_list->redirect);
@@ -780,7 +783,7 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
     	  on_conn_status_change("failed");
 	  init_conn_failure=0;
       }
-
+  ParodusInfo("keep_trying_to_connect after");
 #ifdef FEATURE_DNS_QUERY
       /* if we don't already have a valid jwt, look up server information */
       if (server_is_null (&conn_ctx.server_list->jwt))
@@ -788,7 +791,8 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
 		  /* since we already found a default server, we don't expect FIND_INVALID_DEFAULT */
 		  g_shutdown = true;
 	    }
-#endif		
+#endif
+  ParodusInfo("FEATURE_DNS_QUERY after");		
 	}
 	if(conn_ctx.current_server != NULL && conn_ctx.current_server->allow_insecure <= 0)
 	{
@@ -823,15 +827,15 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
 	free_header_info (&conn_ctx.header_info);
         
 	// Reset close_retry flag and heartbeatTimer once the connection retry is successful
-	ParodusPrint("createNopollConnection(): reset_close_retry\n");
+	ParodusInfo("createNopollConnection(): reset_close_retry\n");
 	reset_close_retry();
 	reset_heartBeatTimer();
 	set_global_reconnect_reason("webpa_process_starts");
 	set_global_reconnect_status(false);
-	ParodusPrint("LastReasonStatus reset after successful connection\n");
+	ParodusInfo("LastReasonStatus reset after successful connection\n");
 	setMessageHandlers();
     stop_conn_in_progress ();
-	ParodusPrint("set cloud_status\n");
+	ParodusInfo("set cloud_status\n");
 	set_cloud_status(CLOUD_STATUS_ONLINE);
 	ParodusInfo("cloud_status set as %s after successful connection\n", get_cloud_status());
 	return nopoll_true;
@@ -929,7 +933,7 @@ void write_conn_in_prog_file (bool is_starting, unsigned long start_time)
   FILE *fp;
   unsigned long timestamp;
   ParodusCfg *cfg = get_parodus_cfg();
-
+  ParodusInfo("write_conn_in_prog_file");
   if (NULL == cfg->connection_health_file)
     return;
   fd = open (cfg->connection_health_file, O_CREAT | O_WRONLY | O_SYNC, 0666);
