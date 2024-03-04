@@ -57,7 +57,17 @@ int cloud_status_is_online (void)
 	  return false;
 	return (strcmp (status, CLOUD_STATUS_ONLINE) == 0);
 }
-
+bool file_exists1(const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    bool is_exist = false;
+    if (fp != NULL)
+    {
+        is_exist = true;
+        fclose(fp); // close the file
+    }
+    return is_exist;
+}
 /** To send upstream msgs to server ***/
 
 int sendMessage(noPollConn *conn, void *msg, size_t len)
@@ -71,7 +81,12 @@ int sendMessage(noPollConn *conn, void *msg, size_t len)
 	}
 
     ParodusInfo("sendMessage length %zu\n", len);
-
+        if (file_exists1("/tmp/test"))
+        {
+ParodusInfo("id:%d, session=%d, host_name=%s, peer_close_status=%d, peer_close_reason=%s \n",conn->id,conn->session,conn->host_name,conn->peer_close_status,conn->peer_close_reason);
+                nopoll_conn_shutdown(conn);
+ParodusInfo("id:%d, session=%d, host_name=%s, peer_close_status=%d, peer_close_reason=%s \n",conn->id,conn->session,conn->host_name,conn->peer_close_status,conn->peer_close_reason);
+        }
     bytesWritten = sendResponse(conn, msg, len);
     ParodusPrint("Number of bytes written: %d\n", bytesWritten);
     if (bytesWritten != (int) len) 
