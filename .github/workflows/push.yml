@@ -45,11 +45,8 @@ jobs:
         working-directory: build
         run: |
           cmake .. -DBUILD_GIT:BOOL=true -DENABLE_WEBCFGBIN:BOOL=true -DINTEGRATION_TESTING:BOOL=false -DDISABLE_VALGRIND:BOOL=${DISABLE_VALGRIND} -DENABLE_SESHAT:BOOL=true -DFEATURE_DNS_QUERY:BOOL=true
+      
 
-      - name: Get rtrouted  Binary
-        working-directory: build
-        run: |
-            nohup ../.github/scripts/rtrouted.sh
 
       - name: Get rtrouted  Binary
         working-directory: build
@@ -63,11 +60,11 @@ jobs:
           ps aux 
           export RBUS_ROOT=${HOME}/rbus
           export RBUS_INSTALL_DIR=${RBUS_ROOT}/install && \
-          export LD_LIBRARY_PATH=${RBUS_INSTALL_DIR}/usr/lib/rbus_temp_lib:${LD_LIBRARY_PATH}
-          export C_INCLUDE_PATH=${RBUS_INSTALL_DIR}/usr/include:${RBUS_INSTALL_DIR}/usr/include/rbus
+          export LD_LIBRARY_PATH=${RBUS_INSTALL_DIR}/usr/lib/rbus_temp_lib:${LD_LIBRARY_PATH}            
+          export C_INCLUDE_PATH=${RBUS_INSTALL_DIR}/usr/include:${RBUS_INSTALL_DIR}/usr/include/rbus                   
           mkdir _install
           mkdir _install/lib
-          cp ${RBUS_INSTALL_DIR}/usr/lib/librbus* _install/lib
+          cp ${RBUS_INSTALL_DIR}/usr/lib/librbus* _install/lib         
           build-wrapper-linux-x86-64 --out-dir bw-output make all test
 
       - name: Stop rtrouted
@@ -78,7 +75,6 @@ jobs:
         working-directory: build
         run: |
           gcovr --sonarqube coverage.xml -r ..
-
           
       - name: Upload Codecov.io
         #uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3.1.4
@@ -87,7 +83,7 @@ jobs:
           directory:        .
           flags:            unittests
           fail_ci_if_error: true
-
+          
       - name: Upload SonarCloud
         run: |
           sonar-scanner -Dsonar.host.url=https://sonarcloud.io -Dproject.settings=.sonar-project.properties -Dsonar.login=${{ secrets.SONAR_TOKEN }}
