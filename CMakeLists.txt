@@ -145,6 +145,7 @@ ExternalProject_Add(msgpack
     CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
                   -DMSGPACK_ENABLE_CXX=OFF
                   -DMSGPACK_BUILD_EXAMPLES=OFF
+                  -DMSGPACK_BUILD_TESTS=OFF
 )
 add_library(libmsgpack STATIC SHARED IMPORTED)
 add_dependencies(libmsgpack msgpack)
@@ -243,7 +244,7 @@ include_directories(${INCLUDE_DIR}
 
 endif (FEATURE_DNS_QUERY)
 
-if (ENABLE_WEBCFGBIN)
+if (( NOT BUILD_GIT) AND  ENABLE_WEBCFGBIN)
 # rbus external dependency
 #-------------------------------------------------------------------------------
 ExternalProject_Add(rbus
