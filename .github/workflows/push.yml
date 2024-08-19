@@ -47,6 +47,7 @@ jobs:
           cmake .. -DBUILD_GIT:BOOL=true -DENABLE_WEBCFGBIN:BOOL=true -DINTEGRATION_TESTING:BOOL=false -DDISABLE_VALGRIND:BOOL=${DISABLE_VALGRIND} -DENABLE_SESHAT:BOOL=true -DFEATURE_DNS_QUERY:BOOL=true
       
 
+
       - name: Get rtrouted  Binary
         working-directory: build
         run: |
@@ -60,7 +61,7 @@ jobs:
           export RBUS_ROOT=${HOME}/rbus
           export RBUS_INSTALL_DIR=${RBUS_ROOT}/install && \
           export LD_LIBRARY_PATH=${RBUS_INSTALL_DIR}/usr/lib/rbus_temp_lib:${LD_LIBRARY_PATH}            
-          export C_INCLUDE_PATH=${RBUS_INSTALL_DIR}/usr/include                   
+          export C_INCLUDE_PATH=${RBUS_INSTALL_DIR}/usr/include:${RBUS_INSTALL_DIR}/usr/include/rbus                   
           mkdir _install
           mkdir _install/lib
           cp ${RBUS_INSTALL_DIR}/usr/lib/librbus* _install/lib         
