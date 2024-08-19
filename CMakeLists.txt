@@ -145,6 +145,7 @@ ExternalProject_Add(msgpack
     CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
                   -DMSGPACK_ENABLE_CXX=OFF
                   -DMSGPACK_BUILD_EXAMPLES=OFF
+                  -DMSGPACK_BUILD_TESTS=OFF
 )
 add_library(libmsgpack STATIC SHARED IMPORTED)
 add_dependencies(libmsgpack msgpack)
@@ -242,6 +243,7 @@ include_directories(${INCLUDE_DIR}
 					)		
 
 endif (FEATURE_DNS_QUERY)
+
 
 #This RBUS already build from github actions rtrouted.sh script, So disabled in github workflow
 if (( NOT BUILD_GIT) AND  ENABLE_WEBCFGBIN)
