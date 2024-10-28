@@ -627,12 +627,20 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	   		   
 		ParodusInfo("Sending response to server\n");
 		close_retry = get_close_retry();
-
+        sleep(10);
 		/* send response when connection retry is not in progress. Also during cloud_disconnect UPDATE request. Here, close_retry becomes 1 hence check is added to send disconnect response to server. */
 		//TODO: Upstream and downstream messages in queue should be handled and queue should be empty before parodus forcefully disconnect from cloud.
 		if(!close_retry || (get_parodus_cfg()->cloud_disconnect !=NULL))
 		{
-			sendRetStatus = sendMessage(get_global_conn(),appendData, encodedSize);
+            if(strcmp(get_parodus_cfg()->cloud_status,CLOUD_STATUS_ONLINE) == 0)
+            {
+    			sendRetStatus = sendMessage(get_global_conn(),appendData, encodedSize);
+            }
+            else
+            {
+                ParodusError("cloud_status is offline, unable to send metadata pack to server\n");
+                sendRetStatus = 1;
+            }    
 		}
 		else
 		{
