@@ -1786,79 +1786,152 @@ void mapXmidtStatusToStatusMessage(int status, char **message)
 
 int rbus_methodHandler(const char *methodName, cJSON *payloadJson, char **methodResponseOut)
 {
-    rbusObject_t inParams = NULL, outParams = NULL;
-    rbusHandle_t rbus_handle = NULL;
-    rbusError_t rc;
-    *methodResponseOut = NULL;
-	int i = 0;
-
-
-    ParodusInfo("Invoking RBUS method: %s\n", methodName);
-
-    rbus_handle = get_parodus_rbus_Handle();
+	rbusHandle_t rbus_handle = get_parodus_rbus_Handle();
     if (!rbus_handle)
     {
         ParodusError("rbus_methodHandler failed: rbus_handle is NULL\n");
         return -1;
     }
 
-    // Initialize inParams and fill with key-value pairs (excluding "Method")
-    rbusObject_Init(&inParams, "NULL");
+    rbusError_t rc;
+	rbusObject_t inParams = NULL, outParams = NULL;
+	rbusObject_Init(&inParams, NULL);
+    *methodResponseOut = NULL;
+	cJSON *item = NULL;
 
-    cJSON *item = NULL;
+	const char* typeStr = "param";
+
+    // Extract and process each item in the JSON payload
     cJSON_ArrayForEach(item, payloadJson)
     {
         if (!item->string) continue;
-
-        // Skip the "Method" key
         if (strcmp(item->string, "method") == 0) continue;
-
-        if (cJSON_IsObject(item) && strcmp(item->string, "params") == 0)
+        if (strcmp(item->string, "params") == 0)
 		{
-			cJSON *inner = NULL;
-			cJSON_ArrayForEach(inner, item)
+			/*
+			* Object with key-value pairs
+			* Example: "params": { "key": "val" }
+			*/
+			if (cJSON_IsObject(item))
 			{
-				if (!inner->string) continue;
+				cJSON *inner = NULL;
+				cJSON_ArrayForEach(inner, item)
+				{
+					if (!inner->string) continue;
 
-				if (cJSON_IsString(inner))
-				{
 					rbusValue_t val;
 					rbusValue_Init(&val);
-					rbusValue_SetString(val, inner->valuestring);
+
+					if (cJSON_IsString(inner))
+					{
+						const char* s = inner->valuestring ? inner->valuestring : "";
+                        rbusValue_SetString(val, s);
+					}
+					else if (cJSON_IsNumber(inner))
+                    {
+                        double d = inner->valuedouble;
+                        if (d >= INT32_MIN && d <= INT32_MAX && floor(d) == d)
+                            rbusValue_SetInt32(val, (int32_t)d);
+                        else
+                            rbusValue_SetDouble(val, d);
+                    }
+					else if (cJSON_IsBool(inner))
+						rbusValue_SetBoolean(val, cJSON_IsTrue(inner));
+					else
+					{
+						ParodusPrint("Skipping unsupported nested type for key: %s\n", inner->string);
+						rbusValue_Release(val);
+						continue;
+					}
 					rbusObject_SetValue(inParams, inner->string, val);
 					rbusValue_Release(val);
 				}
-				else if (cJSON_IsNumber(inner))
-				{
-					rbusValue_t val;
-					rbusValue_Init(&val);
-					rbusValue_SetDouble(val, inner->valuedouble);
-					rbusObject_SetValue(inParams, inner->string, val);
-					rbusValue_Release(val);
-				}
-				else if (cJSON_IsBool(inner))
-				{
-					rbusValue_t val;
-					rbusValue_Init(&val);
-					rbusValue_SetBoolean(val, cJSON_IsTrue(inner));
-					rbusObject_SetValue(inParams, inner->string, val);
-					rbusValue_Release(val);
-				}
-				else
-				{
-					ParodusInfo("[DEBUG] Skipping unsupported nested type for key: %s\n", inner->string);
-				}
-				i++;
 			}
+			else if (cJSON_IsArray(item))
+			{
+				int idx = 0;
+				cJSON *inner = NULL;
+				cJSON_ArrayForEach(inner, item)
+				{
+					char key[256];
+					snprintf(key, sizeof(key), "%s%d", typeStr, idx++);
+					/*
+					* Object as an array of strings
+					* Example: "params": ["val1","val2"]
+					*/
+					if (cJSON_IsString(inner))
+					{
+						rbusValue_t val;
+						rbusValue_Init(&val);
+						rbusValue_SetString(val, inner->valuestring);
+						rbusObject_SetValue(inParams, key, val);
+						rbusValue_Release(val);
+					}
+					/*
+					* Object as an array of nested key-value pairs
+					* Example: "params": [ { "key1": "val1" }, { "key2": "val2" }  ]
+					*/
+					else if (cJSON_IsObject(inner))
+					{
+						rbusObject_t subObj;
+						rbusObject_Init(&subObj, key);
+
+						cJSON *field = NULL;
+						cJSON_ArrayForEach(field, inner)
+						{
+							if (!field->string) continue;
+
+							rbusValue_t val;
+							rbusValue_Init(&val);
+
+							if (cJSON_IsString(field))
+								rbusValue_SetString(val, field->valuestring);
+							else if (cJSON_IsNumber(field))
+                            {
+                                double d = field->valuedouble;
+                                if (d >= INT32_MIN && d <= INT32_MAX && floor(d) == d)
+                                    rbusValue_SetInt32(val, (int32_t)d);
+                                else
+                                    rbusValue_SetDouble(val, d);
+                            }
+							else if (cJSON_IsBool(field))
+								rbusValue_SetBoolean(val, cJSON_IsTrue(field));
+							else
+							{
+								ParodusPrint("Skipping unsupported type for subscription field: %s\n", field->string);
+								rbusValue_Release(val);
+								continue;
+							}
+							rbusObject_SetValue(subObj, field->string, val);
+							rbusValue_Release(val);
+						}
+						rbusValue_t objVal;
+						rbusValue_Init(&objVal);
+						rbusValue_SetObject(objVal, subObj);
+						rbusObject_SetValue(inParams, key, objVal);
+						rbusValue_Release(objVal);
+						rbusObject_Release(subObj);
+					}
+					else
+                    {
+						ParodusPrint("Skipping unsupported array entry type\n");
+                    }
+				}
+			}
+			else
+            {
+                ParodusPrint("Unsupported params type\n");
+				return -1;
+            }
 		}
 		else
 		{
-			ParodusInfo("[DEBUG] Skipping unsupported type for key: %s\n", item->string);
+			ParodusPrint("params key is missing from the input payload.\n");
 		}
-
     }
 
-    // Call the RBUS method
+    // Invoke the rbus method
+    ParodusPrint("Invoking rbus method: %s\n", methodName);
     rc = rbusMethod_Invoke(rbus_handle, methodName, inParams, &outParams);
     rbusObject_Release(inParams);
 
@@ -1869,8 +1942,8 @@ int rbus_methodHandler(const char *methodName, cJSON *payloadJson, char **method
 
 	int status_code = -1;
 	const char *return_message = NULL;
-
 	rbusValue_t outVal = NULL;
+
 	if ((outVal = rbusObject_GetValue(outParams, "message")) != NULL)
 		return_message = rbusValue_GetString(outVal, NULL);
 
@@ -1882,11 +1955,13 @@ int rbus_methodHandler(const char *methodName, cJSON *payloadJson, char **method
 	if(status_code == -1)
 		status_code = (rc == RBUS_ERROR_SUCCESS) ? 0 : rc;
 
+	ParodusInfo("Method Invoke response msg: %s status: %d\n", return_message ? return_message : "NULL", status_code);
     char *buf = NULL;
     int n = asprintf(&buf, "{\"message\":\"%s\", \"statusCode\":%d}", return_message ? return_message : "NULL", status_code);
     if (n > 0 && buf)
         *methodResponseOut = buf;
 
-    rbusObject_Release(outParams);
+    if (outParams)
+        rbusObject_Release(outParams);
 	return (rc == RBUS_ERROR_SUCCESS) ? 0 : -1;
 }
