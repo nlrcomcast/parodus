@@ -222,7 +222,7 @@ ExternalProject_Add(cjwt
     GIT_REPOSITORY https://github.com/Comcast/cjwt.git
     GIT_TAG "1b023c41bb2d6dbbf493c202ed81f06c84d5b51b"
     #GIT_TAG "1.0.1"
-    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF
+    CMAKE_ARGS += -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DBUILD_TESTING=OFF -DCMAKE_C_FLAGS=-Wno-deprecated-declarations
 )
 add_library(libcjwt STATIC SHARED IMPORTED)
 add_dependencies(libcjwt cjwt)
