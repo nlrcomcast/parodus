@@ -15,13 +15,13 @@ on:
     tags-ignore:
       - 'v[0-9]+.[0-9]+.[0-9]+'
     branches:
-      - main
+      - workflow
       - master
 
 jobs:
   test:
     name: Unit Tests
-    runs-on: [ ubuntu-20.04 ]
+    runs-on: [ ubuntu-latest ]
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -32,7 +32,7 @@ jobs:
       - name: Install packages
         run: |
           sudo apt update
-          sudo apt-get -y install valgrind libcunit1 libcunit1-doc libcunit1-dev libmsgpack-dev gcovr libtool
+          sudo apt-get -y install valgrind libcunit1 libcunit1-doc libcunit1-dev libmsgpack-dev gcovr libtool libcjson-dev uuid-dev
           pip install coverage
 
       - name: Make Build Directory
