@@ -281,6 +281,16 @@ target_link_libraries (test_upstream_sock -lcmocka gcov -lcunit -lcimplog
  -lssl -lcrypto -lrt -lm)
 
 #-------------------------------------------------------------------------------
+#   test_packMetaData
+#-------------------------------------------------------------------------------
+add_test(NAME test_packMetaData COMMAND ${MEMORY_CHECK} ./test_packMetaData)
+add_executable(test_packMetaData test_packMetaData.c ../src/upstream.c ../src/close_retry.c ../src/string_helpers.c ../src/config.c)
+target_link_libraries (test_packMetaData gcov -lcunit -lcimplog
+ -lwrp-c -luuid -lpthread -lmsgpackc -lnopoll -lnanomsg
+ -Wl,--no-as-needed -lcjson -lcjwt -ltrower-base64
+ -lssl -lcrypto -lrt -lm)
+
+#-------------------------------------------------------------------------------
 #   test_downstream
 #-------------------------------------------------------------------------------
 add_test(NAME test_downstream COMMAND ${MEMORY_CHECK} ./test_downstream)
@@ -396,6 +406,20 @@ set(SESHIFC_SRC test_seshat_interface_stub.c ../src/seshat_interface_stub.c)
 endif (ENABLE_SESHAT)
 add_executable(test_seshat_interface ${SESHIFC_SRC})
 target_link_libraries (test_seshat_interface -lcmocka ${PARODUS_COMMON_LIBS} -lwrp-c)
+
+if (ENABLE_WEBCFGBIN)
+#-------------------------------------------------------------------------------
+#   test_upstream_rbus
+#-------------------------------------------------------------------------------
+add_test(NAME test_upstream_rbus COMMAND ${MEMORY_CHECK} ./test_upstream_rbus)
+set(UPSTREAM_RBUS_WRAP_FLAGS "-Wl,--wrap=rbus_open,--wrap=rbusEvent_SubscribeAsync,--wrap=rbus_registerLogHandler,--wrap=rbusObject_GetValue,--wrap=rbusValue_GetBytes,--wrap=rbusValue_GetString,--wrap=wrp_to_struct,--wrap=wrp_struct_to,--wrap=validate_partner_id,--wrap=sendUpstreamMsgToServer")
+if (WAN_FAILOVER_SUPPORTED)
+set(UPSTREAM_RBUS_WRAP_FLAGS "${UPSTREAM_RBUS_WRAP_FLAGS},--wrap=setWebpaInterface,--wrap=get_interface_down_event,--wrap=reset_interface_down_event,--wrap=resume_heartBeatTimer,--wrap=set_global_reconnect_reason,--wrap=set_global_reconnect_status,--wrap=set_close_retry")
+endif (WAN_FAILOVER_SUPPORTED)
+add_executable(test_upstream_rbus test_upstream_rbus.c ../src/upstream_rbus.c ../src/string_helpers.c)
+target_link_libraries(test_upstream_rbus -lcmocka ${PARODUS_COMMON_LIBS} -lrbus)
+set_target_properties(test_upstream_rbus PROPERTIES LINK_FLAGS "${UPSTREAM_RBUS_WRAP_FLAGS}")
+endif (ENABLE_WEBCFGBIN)
 
 if (INTEGRATION_TESTING)
 #-------------------------------------------------------------------------------

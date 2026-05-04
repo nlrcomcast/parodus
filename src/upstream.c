@@ -29,11 +29,12 @@
 #include "client_list.h"
 #include "nopoll_helpers.h"
 #include "close_retry.h"
+#include <msgpack.h>
 
 /*----------------------------------------------------------------------------*/
 /*                                   Macros                                   */
 /*----------------------------------------------------------------------------*/
-#define METADATA_COUNT 					12
+#define METADATA_COUNT 					14
 #define PARODUS_SERVICE_NAME			"parodus"
 /*----------------------------------------------------------------------------*/
 /*                            File Scoped Variables                           */
@@ -48,6 +49,18 @@ UpStreamMsg *UpStreamMsgQ = NULL;
 pthread_mutex_t nano_mut=PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t nano_con=PTHREAD_COND_INITIALIZER;
+
+static pthread_mutex_t metadata_mut=PTHREAD_MUTEX_INITIALIZER;
+
+void lock_metadata_mutex(void)
+{
+    pthread_mutex_lock(&metadata_mut);
+}
+
+void unlock_metadata_mutex(void)
+{
+    pthread_mutex_unlock(&metadata_mut);
+}
 
 UpStreamMsg * get_global_UpStreamMsgQ(void)
 {
@@ -76,7 +89,28 @@ pthread_mutex_t *get_global_nano_mut(void)
 /*----------------------------------------------------------------------------*/
 /*                             External functions                             */
 /*----------------------------------------------------------------------------*/
-
+/*
+ * Helper: find a value string in a msgpack map by key name.
+ * Returns pointer to a null-terminated copy (caller must free), or NULL.
+ */
+static char *find_map_value(msgpack_object_map *map, const char *key)
+{
+    uint32_t i;
+    for (i = 0; i < map->size; i++) {
+        msgpack_object_kv *kv = &map->ptr[i];
+        if (kv->key.type == MSGPACK_OBJECT_STR &&
+            kv->key.via.str.size == strlen(key) &&
+            strncmp(kv->key.via.str.ptr, key, kv->key.via.str.size) == 0) {
+            if (kv->val.type == MSGPACK_OBJECT_STR) {
+                char *val = (char *)malloc(kv->val.via.str.size + 1);
+                memcpy(val, kv->val.via.str.ptr, kv->val.via.str.size);
+                val[kv->val.via.str.size] = '\0';
+                return val;
+            }
+        }
+    }
+    return NULL;
+}
 void packMetaData()
 {
     char boot_time[256]={'\0'};
@@ -95,7 +129,9 @@ void packMetaData()
             {WEBPA_PROTOCOL, get_parodus_cfg()->webpa_protocol},
             {WEBPA_UUID,get_parodus_cfg()->webpa_uuid},
             {WEBPA_INTERFACE, getWebpaInterface()},
-            {PARTNER_ID, get_parodus_cfg()->partner_id}
+            {PARTNER_ID, get_parodus_cfg()->partner_id},
+            {WAN_STATE, get_parodus_cfg()->wan_state},
+            {CPE_SERVICE_STATE, get_parodus_cfg()->cpe_service_state}
         };
     const data_t metapack = {METADATA_COUNT, meta_pack};
 
@@ -104,6 +140,31 @@ void packMetaData()
     if (metaPackSize > 0) 
     {
 	    ParodusInfo("metadata encoding is successful with size %zu\n", metaPackSize);
+        /* Unpack the msgpack buffer */
+        msgpack_unpacked unpacked;
+        msgpack_unpacked_init(&unpacked);
+        msgpack_unpack_return ret = msgpack_unpack_next(&unpacked, (const char *)metadataPack, metaPackSize, NULL);
+        /* Second object is the map — unpack continuing from after the key */
+        size_t offset = 0;
+        msgpack_unpacked obj1, obj2;
+        msgpack_unpacked_init(&obj1);
+        msgpack_unpacked_init(&obj2);
+
+        ret = msgpack_unpack_next(&obj1, (const char *)metadataPack, metaPackSize, &offset);
+        ret = msgpack_unpack_next(&obj2, (const char *)metadataPack, metaPackSize, &offset);
+        msgpack_object_map *map = &obj2.data.via.map;
+        ParodusInfo("DEBUG: metadata unpacked map size %zu\n", map->size);
+        
+        char *val;
+        val = find_map_value(map, WAN_STATE);
+        if (val) { ParodusInfo("DEBUG: WAN_STATE value: %s\n", val); free(val); }
+
+        val = find_map_value(map, CPE_SERVICE_STATE);
+        if (val) { ParodusInfo("DEBUG: CPE_SERVICE_STATE value: %s\n", val); free(val); }
+
+        msgpack_unpacked_destroy(&obj1);
+        msgpack_unpacked_destroy(&obj2);
+        msgpack_unpacked_destroy(&unpacked);
     }
     else
     {
@@ -213,6 +274,57 @@ void *handle_upstream()
     return 0;
 }
 
+void extractCpeServiceState(const char *dest)
+{
+    if (dest == NULL) 
+        return;
+    const char *prefix = "event:device-status/";
+    const char *p = strstr(dest, prefix);
+    if (!p) 
+        return;
+
+    p += strlen(prefix);
+
+    // Find first and second '/'
+    const char *first = strchr(p, '/');
+    if (!first) 
+        return;
+
+    const char *second = strchr(first + 1, '/');
+    if (!second) 
+        return;
+
+    // Extract substring between slashes
+    size_t len = second - first - 1;
+    if (len == 0 || len >= sizeof(get_parodus_cfg()->cpe_service_state)) 
+        return;
+
+    char state[64] = {0};
+    memcpy(state, first+1, len);
+    state[len] = '\0';
+
+    // Validate state
+    const char *new_state = "unknown";
+    if (strcmp(state, "fully-manageable") == 0 ||
+        strcmp(state, "operational") == 0 ||
+        strcmp(state, "non-operational") == 0)
+    {
+        new_state = state;
+    }
+    else
+    {
+        ParodusInfo("Invalid CPE service state received: %s\n", state);
+    }
+
+    lock_metadata_mutex();
+    if (strcmp(get_parodus_cfg()->cpe_service_state, new_state) != 0)
+    {
+        parStrncpy(get_parodus_cfg()->cpe_service_state, new_state, sizeof(get_parodus_cfg()->cpe_service_state));
+        ParodusInfo("metadata cpe_service_state set to : %s\n", get_parodus_cfg()->cpe_service_state);
+        packMetaData();
+    }
+    unlock_metadata_mutex();
+}
 
 void *processUpstreamMessage()
 {		
@@ -329,6 +441,7 @@ void *processUpstreamMessage()
 		    if(msg->u.event.transaction_uuid != NULL) {
 			    ParodusInfo("transaction_uuid in event: %s\n", msg->u.event.transaction_uuid);
 		    }	    
+            		extractCpeServiceState(msg->u.event.dest);
                     partners_t *partnersList = NULL;
                     int j = 0;
 
@@ -619,9 +732,11 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	bool close_retry = false;
 	int sendRetStatus = 1;
 	//appending response with metadata 			
+	lock_metadata_mutex();
 	if(metaPackSize > 0)
 	{
 	   	encodedSize = appendEncodedData( &appendData, *resp_bytes, resp_size, metadataPack, metaPackSize );
+	   	unlock_metadata_mutex();
 	   	ParodusPrint("metadata appended upstream response %s\n", (char *)appendData);
 	   	ParodusPrint("encodedSize after appending :%zu\n", encodedSize);
 	   		   
@@ -652,7 +767,8 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 		appendData =NULL;
 	}
 	else
-	{		
+	{
+		unlock_metadata_mutex();
 		ParodusError("Failed to send upstream as metadata packing is not successful\n");
 		sendRetStatus = 1;
 	}

@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <rbus.h>
+#include "config.h"
 #include "upstream.h"
 #include "ParodusInternal.h"
 #include "partners_check.h"
@@ -35,6 +36,7 @@
 #ifdef WAN_FAILOVER_SUPPORTED
 #define WEBPA_INTERFACE "Device.X_RDK_WanManager.CurrentActiveInterface"
 #endif
+#define WAN_STATE_EVENT "Device.X_RDK_WanManager.WanState"
 
 rbusHandle_t rbus_Handle;
 rbusError_t err;
@@ -194,6 +196,42 @@ void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscr
 {
 	(void)handle;
 	ParodusInfo("subscribeAsyncHandler event %s, error %d - %s\n",subscription->eventName, error, rbusError_ToString(error));
+	if(error == RBUS_ERROR_SUCCESS)
+	{
+		if(strncmp(subscription->eventName, WAN_STATE_EVENT, strlen(WAN_STATE_EVENT)) == 0)
+		{
+			ParodusInfo("Successfully subscribed to %s\n", WAN_STATE_EVENT);
+			/*get orange's data by alias 'orange'*/
+			char* value = NULL;
+			int rc = RBUS_ERROR_SUCCESS;
+			if((rc = rbus_getStr(handle, WAN_STATE_EVENT, &value)) == RBUS_ERROR_SUCCESS)
+			{
+				if(value != NULL)
+				{
+					ParodusInfo("metadata wan_state set to : %s\n", value);
+					lock_metadata_mutex();
+					parStrncpy(get_parodus_cfg()->wan_state, value, sizeof(get_parodus_cfg()->wan_state));
+					packMetaData();
+					unlock_metadata_mutex();
+					PARODUS_FREE(value);					
+				}
+				else 
+				{
+					ParodusInfo("wanStateEventHandler: state value is NULL, fall backing to Unknown\n");
+					lock_metadata_mutex();
+					parStrncpy(get_parodus_cfg()->wan_state, "Unknown", sizeof(get_parodus_cfg()->wan_state));
+					packMetaData();
+					unlock_metadata_mutex();
+				}
+
+			}
+			else
+			{
+				ParodusError("rbus_getStr failed for %s, error:%d - %s\n", WAN_STATE_EVENT, rc, rbusError_ToString(rc));
+			}			
+
+		}
+	}
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
@@ -241,3 +279,40 @@ void eventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rb
     }
 }
 #endif
+
+void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+{
+    (void)handle;
+    (void)subscription;
+    rbusValue_t value = rbusObject_GetValue(event->data, "value");
+    if (value) {
+        const char *state = rbusValue_GetString(value, NULL);
+        if (state) {
+            ParodusInfo("metadata wan_state set to : %s\n", state);
+			lock_metadata_mutex();
+            parStrncpy(get_parodus_cfg()->wan_state, state, sizeof(get_parodus_cfg()->wan_state));
+            packMetaData();
+            unlock_metadata_mutex();
+        }
+		else {
+			ParodusInfo("wanStateEventHandler: state value is NULL, fall backing to Unknown\n");
+			lock_metadata_mutex();
+            parStrncpy(get_parodus_cfg()->wan_state, "Unknown", sizeof(get_parodus_cfg()->wan_state));
+            packMetaData();
+            unlock_metadata_mutex();
+		}
+    } else {
+        ParodusError("wanStateEventHandler: value is NULL\n");
+    }
+}
+
+int subscribeWanStateEvent()
+{
+    int rc = RBUS_ERROR_SUCCESS;
+    ParodusInfo("Subscribing to %s Event\n", WAN_STATE_EVENT);
+    rc = rbusEvent_SubscribeAsync(rbus_Handle, WAN_STATE_EVENT, wanStateEventHandler, subscribeAsyncHandler, "parodusWanState", 10*60);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        ParodusError("%s subscribe failed: %d - %s\n", WAN_STATE_EVENT, rc, rbusError_ToString(rc));
+    }
+    return rc;
+}
