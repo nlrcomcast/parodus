@@ -120,6 +120,8 @@ typedef struct
 	unsigned int boot_retry_wait;
     char webpa_interface_label[64];
     char wan_ipv4_address[64];
+    char wan_state[64];
+    char cpe_service_state[64];
 #ifdef FEATURE_DNS_QUERY
     char *record_jwt_file;
 #endif
