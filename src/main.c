@@ -18,6 +18,7 @@
 #include <string.h>
 #include "stdlib.h"
 #include "config.h"
+#include "upstream.h"
 #include "auth_token.h"
 #include "connection.h"
 #include "conn_interface.h"
@@ -123,6 +124,7 @@ int main( int argc, char **argv)
     registerRbusLogger();
     subscribeRBUSevent();
     regXmidtSendDataMethod();
+	subscribeWanStateEvent();
     #endif
     setDefaultValuesToCfg(cfg);
     if (0 != parseCommandLine(argc,argv,cfg)) {
