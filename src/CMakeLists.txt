@@ -37,6 +37,15 @@ else()
 message(STATUS "WAN_FAILOVER_SUPPORTED is not supported")
 endif (WAN_FAILOVER_SUPPORTED)
 
+if (DEVICE_GATEWAY)
+message(STATUS "DEVICE_GATEWAY is supported")
+if (NOT ENABLE_WEBCFGBIN)
+message(WARNING "DEVICE_GATEWAY requires ENABLE_WEBCFGBIN to be ON")
+endif (NOT ENABLE_WEBCFGBIN)
+else()
+message(STATUS "DEVICE_GATEWAY is not supported")
+endif (DEVICE_GATEWAY)
+
 add_executable(parodus ${SOURCES})
 
 target_link_libraries (parodus

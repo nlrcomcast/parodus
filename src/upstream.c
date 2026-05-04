@@ -33,7 +33,11 @@
 /*----------------------------------------------------------------------------*/
 /*                                   Macros                                   */
 /*----------------------------------------------------------------------------*/
+#ifdef DEVICE_GATEWAY
+#define METADATA_COUNT 					13
+#else
 #define METADATA_COUNT 					12
+#endif
 #define PARODUS_SERVICE_NAME			"parodus"
 /*----------------------------------------------------------------------------*/
 /*                            File Scoped Variables                           */
@@ -96,6 +100,9 @@ void packMetaData()
             {WEBPA_UUID,get_parodus_cfg()->webpa_uuid},
             {WEBPA_INTERFACE, getWebpaInterface()},
             {PARTNER_ID, get_parodus_cfg()->partner_id}
+#ifdef DEVICE_GATEWAY
+            ,{WAN_STATE, (char *)get_wan_state()}
+#endif
         };
     const data_t metapack = {METADATA_COUNT, meta_pack};
 
@@ -618,6 +625,16 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	size_t encodedSize;
 	bool close_retry = false;
 	int sendRetStatus = 1;
+
+	/* Re-pack metadata dynamically per message to reflect current state */
+	if(metadataPack != NULL)
+	{
+		free(metadataPack);
+		metadataPack = NULL;
+		metaPackSize = 0;
+	}
+	packMetaData();
+
 	//appending response with metadata 			
 	if(metaPackSize > 0)
 	{

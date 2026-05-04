@@ -103,6 +103,24 @@ char *get_cloud_status(void)
     return status;    
 }
 
+#ifdef DEVICE_GATEWAY
+void set_wan_state(const char *state)
+{
+    if(state != NULL)
+    {
+        pthread_mutex_lock(&config_mut);
+        strncpy(get_parodus_cfg()->wan_state, state, sizeof(get_parodus_cfg()->wan_state) - 1);
+        get_parodus_cfg()->wan_state[sizeof(get_parodus_cfg()->wan_state) - 1] = '\0';
+        pthread_mutex_unlock(&config_mut);
+    }
+}
+
+const char *get_wan_state(void)
+{
+    return get_parodus_cfg()->wan_state;
+}
+#endif
+
 const char *get_tok (const char *src, int delim, char *result, int resultsize)
 {
 	int i;
@@ -869,6 +887,9 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 	
 	cfg->cloud_status = CLOUD_STATUS_OFFLINE;
 	ParodusInfo("Default cloud_status is %s\n", cfg->cloud_status);
+#ifdef DEVICE_GATEWAY
+	memset(cfg->wan_state, 0, sizeof(cfg->wan_state));
+#endif
 }
 
 void loadParodusCfg(ParodusCfg * config,ParodusCfg *cfg)

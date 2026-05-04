@@ -58,6 +58,9 @@ extern "C" {
 #define BOOT_RETRY_WAIT         "boot-time-retry-wait"
 #define WEBPA_INTERFACE_LABEL   "webpa-interface-label"
 #define WAN_IPV4_ADDRESS        "wan-ipv4-address"
+#ifdef DEVICE_GATEWAY
+#define WAN_STATE               "wan-state"
+#endif
 
 #define PROTOCOL_VALUE 					"PARODUS-2.0"
 #define WEBPA_PATH_URL                  "/api/v2/device"
@@ -123,6 +126,9 @@ typedef struct
 #ifdef FEATURE_DNS_QUERY
     char *record_jwt_file;
 #endif
+#ifdef DEVICE_GATEWAY
+    char wan_state[64];
+#endif
 } ParodusCfg;
 
 #define FLAGS_IPV6_ONLY (1 << 0)
@@ -156,6 +162,10 @@ void reset_cloud_disconnect_reason(ParodusCfg *cfg);
 char *getWebpaInterface(void);
 void set_cloud_status(char *status);
 char *get_cloud_status(void);
+#ifdef DEVICE_GATEWAY
+void set_wan_state(const char *state);
+const char *get_wan_state(void);
+#endif
 int get_parodus_init();
 /**
  * parse a webpa url. Extract the server address, the port

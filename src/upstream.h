@@ -56,6 +56,9 @@ void set_global_UpStreamMsgQ(UpStreamMsg * UpStreamQ);
 #ifdef WAN_FAILOVER_SUPPORTED
 int subscribeCurrentActiveInterfaceEvent();
 #endif
+#ifdef DEVICE_GATEWAY
+int subscribeWanStateEvent();
+#endif
 UpStreamMsg * get_global_UpStreamMsgQ(void);
 pthread_cond_t *get_global_nano_con(void);
 pthread_mutex_t *get_global_nano_mut(void);

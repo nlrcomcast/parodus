@@ -122,6 +122,9 @@ int main( int argc, char **argv)
     #ifdef ENABLE_WEBCFGBIN
     registerRbusLogger();
     subscribeRBUSevent();
+    #ifdef DEVICE_GATEWAY
+    subscribeWanStateEvent();
+    #endif
     regXmidtSendDataMethod();
     #endif
     setDefaultValuesToCfg(cfg);

@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <rbus.h>
 #include "upstream.h"
+#include "config.h"
 #include "ParodusInternal.h"
 #include "partners_check.h"
 #include "close_retry.h"
@@ -34,6 +35,9 @@
 #define WEBCFG_UPSTREAM_EVENT "Webconfig.Upstream"
 #ifdef WAN_FAILOVER_SUPPORTED
 #define WEBPA_INTERFACE "Device.X_RDK_WanManager.CurrentActiveInterface"
+#endif
+#ifdef DEVICE_GATEWAY
+#define WAN_STATE_EVENT "Device.X_RDK_WanManager.WanState"
 #endif
 
 rbusHandle_t rbus_Handle;
@@ -83,6 +87,10 @@ void registerRbusLogger()
 void eventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription );
 #endif
 
+#ifdef DEVICE_GATEWAY
+void wanStateEventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription );
+#endif
+
 /* API to register RBUS listener to receive messages from webconfig */
 void subscribeRBUSevent()
 {
@@ -113,6 +121,41 @@ int subscribeCurrentActiveInterfaceEvent()
         }   
 	return rc;	
 } 
+#endif
+
+#ifdef DEVICE_GATEWAY
+/* API to subscribe WanState value change event */
+int subscribeWanStateEvent()
+{
+	int rc = RBUS_ERROR_SUCCESS;
+	ParodusInfo("Subscribing to %s Event\n", WAN_STATE_EVENT);
+	rc = rbusEvent_SubscribeAsync(rbus_Handle, WAN_STATE_EVENT, wanStateEventReceiveHandler, subscribeAsyncHandler, "parodusWanState", 10*60);
+	if(rc != RBUS_ERROR_SUCCESS)
+	{
+		ParodusError("%s subscribe failed : %d - %s\n", WAN_STATE_EVENT, rc, rbusError_ToString(rc));
+	}
+	return rc;
+}
+
+void wanStateEventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription )
+{
+	(void)subscription;
+	(void)rbus_Handle;
+	const char *state = NULL;
+	rbusValue_t newValue = rbusObject_GetValue(event->data, "value");
+	ParodusInfo("Consumer received WanState event for param %s\n", event->name);
+
+	if(newValue) {
+		state = rbusValue_GetString(newValue, NULL);
+		if(state) {
+			ParodusInfo("WanState updated to: %s\n", state);
+			set_wan_state(state);
+		}
+	}
+	else {
+		ParodusError("wanStateEventReceiveHandler: newValue is NULL\n");
+	}
+}
 #endif
 
 void processWebconfigUpstreamEvent(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
