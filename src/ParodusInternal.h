@@ -50,6 +50,8 @@
 /*                                   Macros                                   */
 /*----------------------------------------------------------------------------*/
 
+#define PARODUS_FREE(__x__) if(__x__ != NULL) { free((void*)(__x__)); __x__ = NULL;} else {printf("Trying to free null pointer\n");}
+
 #define UNUSED(x) (void )(x)
 #define NANO_SOCKET_SEND_TIMEOUT_MS                     2000
 #define NANO_SOCKET_RCV_TIMEOUT_MS			500
