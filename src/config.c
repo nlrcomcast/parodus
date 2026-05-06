@@ -869,6 +869,9 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 	
 	cfg->cloud_status = CLOUD_STATUS_OFFLINE;
 	ParodusInfo("Default cloud_status is %s\n", cfg->cloud_status);
+
+	parStrncpy(cfg->wan_state, "Unknown", sizeof(cfg->wan_state));
+	parStrncpy(cfg->cpe_service_state, "unknown", sizeof(cfg->cpe_service_state));
 }
 
 void loadParodusCfg(ParodusCfg * config,ParodusCfg *cfg)

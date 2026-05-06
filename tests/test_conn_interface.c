@@ -48,6 +48,18 @@ parodusOnPingStatusChangeHandler on_ping_status_change;
 /*----------------------------------------------------------------------------*/
 /*                                   Mocks                                    */
 /*----------------------------------------------------------------------------*/
+static pthread_mutex_t metadata_mut=PTHREAD_MUTEX_INITIALIZER;
+
+void lock_metadata_mutex(void)
+{
+    pthread_mutex_lock(&metadata_mut);
+}
+
+void unlock_metadata_mutex(void)
+{
+    pthread_mutex_unlock(&metadata_mut);
+}
+
 void set_server_list_null (server_list_t *server_list)
 {
 	UNUSED(server_list);
