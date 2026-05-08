@@ -49,6 +49,8 @@ extern "C" {
 #define WEBPA_PING_TIMEOUT      "webpa-ping-timeout"
 #define WEBPA_BACKOFF_MAX       "webpa-backoff-max"
 #define PARTNER_ID              "partner-id"
+#define WAN_STATE               "wan-state"
+#define CPE_SERVICE_STATE       "cpe-service-state"
 #define CERT_PATH               "ssl-cert-path"
 #define CLOUD_STATUS            "cloud-status"
 #define CLOUD_DISCONNECT        "cloud-disconnect"

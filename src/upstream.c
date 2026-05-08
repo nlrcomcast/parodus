@@ -33,14 +33,19 @@
 /*----------------------------------------------------------------------------*/
 /*                                   Macros                                   */
 /*----------------------------------------------------------------------------*/
-#define METADATA_COUNT 					12
+#define METADATA_COUNT 					14
 #define PARODUS_SERVICE_NAME			"parodus"
+#define WAN_STATE_MAX_LEN               64
+#define CPE_SERVICE_STATE_MAX_LEN       64
 /*----------------------------------------------------------------------------*/
 /*                            File Scoped Variables                           */
 /*----------------------------------------------------------------------------*/
 
 void *metadataPack;
 size_t metaPackSize=0;
+
+static char wan_state_cache[WAN_STATE_MAX_LEN] = "unknown";
+static char cpe_service_state_cache[CPE_SERVICE_STATE_MAX_LEN] = "unknown";
 
 
 UpStreamMsg *UpStreamMsgQ = NULL;
@@ -69,6 +74,63 @@ pthread_mutex_t *get_global_nano_mut(void)
     return &nano_mut;
 }
 
+const char* get_wan_state(void)
+{
+    return wan_state_cache;
+}
+
+void set_wan_state(const char *state)
+{
+    if (state != NULL) {
+        pthread_mutex_lock(&nano_mut);
+        strncpy(wan_state_cache, state, WAN_STATE_MAX_LEN - 1);
+        wan_state_cache[WAN_STATE_MAX_LEN - 1] = '\0';
+        pthread_mutex_unlock(&nano_mut);
+    }
+}
+
+const char* get_cpe_service_state(void)
+{
+    return cpe_service_state_cache;
+}
+
+void set_cpe_service_state(const char *state)
+{
+    if (state != NULL) {
+        pthread_mutex_lock(&nano_mut);
+        strncpy(cpe_service_state_cache, state, CPE_SERVICE_STATE_MAX_LEN - 1);
+        cpe_service_state_cache[CPE_SERVICE_STATE_MAX_LEN - 1] = '\0';
+        pthread_mutex_unlock(&nano_mut);
+    }
+}
+
+void parse_cpe_service_state_from_dest(const char *dest)
+{
+    if (dest == NULL) return;
+
+    // Expected format: event:device-status/mac:<mac>/<cpe-service-state>/<timestamp>
+    const char *prefix = "event:device-status/";
+    if (strncmp(dest, prefix, strlen(prefix)) != 0) return;
+
+    const char *p = dest + strlen(prefix);
+    // Skip mac:<mac>/
+    p = strchr(p, '/');
+    if (p == NULL) return;
+    p++; // skip the '/'
+
+    // Extract cpe-service-state (up to next '/')
+    const char *end = strchr(p, '/');
+    if (end == NULL) return;
+
+    size_t len = (size_t)(end - p);
+    if (len == 0 || len >= CPE_SERVICE_STATE_MAX_LEN) return;
+
+    char state[CPE_SERVICE_STATE_MAX_LEN];
+    strncpy(state, p, len);
+    state[len] = '\0';
+    set_cpe_service_state(state);
+}
+
 /*----------------------------------------------------------------------------*/
 /*                             Internal Functions                             */
 /*----------------------------------------------------------------------------*/
@@ -95,7 +157,9 @@ void packMetaData()
             {WEBPA_PROTOCOL, get_parodus_cfg()->webpa_protocol},
             {WEBPA_UUID,get_parodus_cfg()->webpa_uuid},
             {WEBPA_INTERFACE, getWebpaInterface()},
-            {PARTNER_ID, get_parodus_cfg()->partner_id}
+            {PARTNER_ID, get_parodus_cfg()->partner_id},
+            {WAN_STATE, (char*)get_wan_state()},
+            {CPE_SERVICE_STATE, (char*)get_cpe_service_state()}
         };
     const data_t metapack = {METADATA_COUNT, meta_pack};
 
@@ -114,6 +178,8 @@ void packMetaData()
 void clear_metadata(){
     if(metadataPack != NULL)
          free(metadataPack);
+    metadataPack = NULL;
+    metaPackSize = 0;
 }
        
 /*
@@ -326,6 +392,7 @@ void *processUpstreamMessage()
                 else if(msgType == WRP_MSG_TYPE__EVENT)
                 {
                     (msg->u.event.headers != NULL && msg->u.event.headers->headers[0] != NULL && msg->u.event.headers->headers[1] != NULL) ? ParodusInfo(" Received upstream event data: dest '%s' traceParent: %s traceState: %s\n", msg->u.event.dest, msg->u.event.headers->headers[0], msg->u.event.headers->headers[1]) : ParodusInfo(" Received upstream event data: dest '%s'\n", msg->u.event.dest);
+                    parse_cpe_service_state_from_dest(msg->u.event.dest);
 		    if(msg->u.event.transaction_uuid != NULL) {
 			    ParodusInfo("transaction_uuid in event: %s\n", msg->u.event.transaction_uuid);
 		    }	    
@@ -618,6 +685,11 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	size_t encodedSize;
 	bool close_retry = false;
 	int sendRetStatus = 1;
+
+	// Repack metadata to capture current wan-state and cpe-service-state
+	clear_metadata();
+	packMetaData();
+
 	//appending response with metadata 			
 	if(metaPackSize > 0)
 	{

@@ -32,6 +32,7 @@
 #include "heartBeat.h"
 
 #define WEBCFG_UPSTREAM_EVENT "Webconfig.Upstream"
+#define WAN_STATE_RBUS_EVENT "Device.X_RDK_WanManager.WanState"
 #ifdef WAN_FAILOVER_SUPPORTED
 #define WEBPA_INTERFACE "Device.X_RDK_WanManager.CurrentActiveInterface"
 #endif
@@ -40,6 +41,8 @@ rbusHandle_t rbus_Handle;
 rbusError_t err;
 
 void processWebconfigUpstreamEvent(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
+
+void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
 
 void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscription, rbusError_t error);
 
@@ -98,6 +101,12 @@ void subscribeRBUSevent()
         ParodusError("rbusEvent_Subscribe failed: %d, %s\n", rc, rbusError_ToString(rc));
     else
         ParodusInfo("rbusEvent_Subscribe was successful\n");
+
+    rc = rbusEvent_SubscribeAsync(rbus_Handle, WAN_STATE_RBUS_EVENT, wanStateEventHandler, subscribeAsyncHandler, "parodusWanState", 10*60);
+    if(rc != RBUS_ERROR_SUCCESS)
+        ParodusError("WAN state rbusEvent_Subscribe failed: %d, %s\n", rc, rbusError_ToString(rc));
+    else
+        ParodusInfo("WAN state rbusEvent_Subscribe was successful\n");
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
@@ -188,6 +197,23 @@ void processWebconfigUpstreamEvent(rbusHandle_t handle, rbusEvent_t const* event
 		}
 		partnersList = NULL;
 	}
+}
+
+void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+{
+    (void)handle;
+    (void)subscription;
+
+    rbusValue_t value = rbusObject_GetValue(event->data, "value");
+    if (value) {
+        const char *state = rbusValue_GetString(value, NULL);
+        if (state) {
+            ParodusInfo("Received WAN state update: %s\n", state);
+            set_wan_state(state);
+        }
+    } else {
+        ParodusError("wanStateEventHandler: value is NULL\n");
+    }
 }
 
 void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscription, rbusError_t error)
