@@ -53,6 +53,41 @@ pthread_mutex_t config_mut=PTHREAD_MUTEX_INITIALIZER;
 /*----------------------------------------------------------------------------*/
 /*                                   Mocks                                    */
 /*----------------------------------------------------------------------------*/
+char wan_state_cache[64]="Unknown";
+char cpe_service_state_cache[64]="unknown";
+void setCpeServiceState(const char *value)
+{
+    pthread_mutex_lock(&config_mut);
+    parStrncpy(get_parodus_cfg()->cpe_service_state, (value != NULL && strlen(value) != 0) ? value : "unknown", sizeof(get_parodus_cfg()->cpe_service_state));
+    pthread_mutex_unlock(&config_mut);
+}
+
+const char *getWanState(void)
+{
+	#ifdef ENABLE_WEBCFGBIN	
+		pthread_mutex_lock (&config_mut);	
+		parStrncpy(wan_state_cache, get_parodus_cfg()->wan_state, sizeof(wan_state_cache));
+		pthread_mutex_unlock (&config_mut);
+	#endif
+		ParodusPrint("wan_state:%s\n", wan_state_cache);
+    return wan_state_cache;
+}
+
+const char *getCpeServiceState(void)
+{
+	#ifdef ENABLE_WEBCFGBIN	
+		pthread_mutex_lock (&config_mut);	
+		parStrncpy(cpe_service_state_cache, get_parodus_cfg()->cpe_service_state, sizeof(cpe_service_state_cache));
+		pthread_mutex_unlock (&config_mut);
+	#endif
+		ParodusPrint("cpe_service_state:%s\n", cpe_service_state_cache);
+    return cpe_service_state_cache;
+}
+
+void write_cpe_service_state_to_file(const char *state)
+{
+    (void)state;
+}
 
 noPollConn *get_global_conn()
 {
@@ -894,6 +929,13 @@ void err_processUpstreamMsg_deviceID()
 	free(UpStreamMsgQ);
 	UpStreamMsgQ = NULL;
 }
+
+void test_dummy()
+{
+    setCpeServiceState(NULL);
+    write_cpe_service_state_to_file(NULL);
+    assert_true(1);
+}
 /*----------------------------------------------------------------------------*/
 /*                             External Functions                             */
 /*----------------------------------------------------------------------------*/
@@ -927,7 +969,8 @@ int main(void)
         cmocka_unit_test(test_processUpstreamMsg_cloud_status),
         cmocka_unit_test(test_processUpstreamMsg_sendToClient),
 	cmocka_unit_test(test_processUpstreamMsg_serviceNameNULL),
-	cmocka_unit_test(err_processUpstreamMsg_deviceID)
+	cmocka_unit_test(err_processUpstreamMsg_deviceID),
+        cmocka_unit_test(test_dummy),    
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

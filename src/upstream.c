@@ -108,8 +108,8 @@ void packMetaData()
             {WEBPA_UUID,get_parodus_cfg()->webpa_uuid},
             {WEBPA_INTERFACE, getWebpaInterface()},
             {PARTNER_ID, get_parodus_cfg()->partner_id},
-            {WAN_STATE, get_parodus_cfg()->wan_state},
-            {CPE_SERVICE_STATE, get_parodus_cfg()->cpe_service_state}
+            {WAN_STATE, getWanState()},
+            {CPE_SERVICE_STATE, getCpeServiceState()}
         };
     const data_t metapack = {METADATA_COUNT, meta_pack};
 
@@ -227,7 +227,7 @@ void *handle_upstream()
     return 0;
 }
 
-void extractCpeServiceState(const char *dest)
+void extractAndSetCpeServiceState(const char *dest)
 {
     if (dest == NULL) 
         return;
@@ -247,12 +247,13 @@ void extractCpeServiceState(const char *dest)
     if (!second) 
         return;
 
+    char state[64] = {0};
+
     // Extract substring between slashes
     size_t len = second - first - 1;
-    if (len == 0 || len >= sizeof(get_parodus_cfg()->cpe_service_state)) 
+    if (len == 0 || len >= sizeof(state)) 
         return;
 
-    char state[64] = {0};
     memcpy(state, first+1, len);
     state[len] = '\0';
 
@@ -266,17 +267,24 @@ void extractCpeServiceState(const char *dest)
     }
     else
     {
-        ParodusInfo("Invalid CPE service state received: %s\n", state);
+        ParodusError("Invalid CPE service state received: %s\n", state);
+        return;
     }
 
-    lock_metadata_mutex();
-    if (strcmp(get_parodus_cfg()->cpe_service_state, new_state) != 0)
+
+    if (strcmp(getCpeServiceState(), new_state) != 0)
     {
-        parStrncpy(get_parodus_cfg()->cpe_service_state, new_state, sizeof(get_parodus_cfg()->cpe_service_state));
-        ParodusInfo("metadata cpe_service_state set to : %s\n", get_parodus_cfg()->cpe_service_state);
+        setCpeServiceState(new_state);
+        write_cpe_service_state_to_file(new_state);
+        lock_metadata_mutex();
         packMetaData();
+        unlock_metadata_mutex();        
+        ParodusInfo("metadata cpe_service_state set to : %s\n", getCpeServiceState());        
     }
-    unlock_metadata_mutex();
+    else
+    {
+        ParodusPrint("CPE service state is already %s, no update needed\n", new_state);
+    }
 }
 
 void *processUpstreamMessage()
@@ -394,7 +402,7 @@ void *processUpstreamMessage()
 		    if(msg->u.event.transaction_uuid != NULL) {
 			    ParodusInfo("transaction_uuid in event: %s\n", msg->u.event.transaction_uuid);
 		    }	    
-            		extractCpeServiceState(msg->u.event.dest);
+                    extractAndSetCpeServiceState(msg->u.event.dest);
                     partners_t *partnersList = NULL;
                     int j = 0;
 

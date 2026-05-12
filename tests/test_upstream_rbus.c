@@ -62,6 +62,14 @@ extern void eventReceiveHandler(rbusHandle_t rbus_Handle, rbusEvent_t const* eve
 /*----------------------------------------------------------------------------*/
 /*                                   Mocks                                    */
 /*----------------------------------------------------------------------------*/
+pthread_mutex_t config_mut=PTHREAD_MUTEX_INITIALIZER;
+char wan_state_cache[64]="Unknown";
+void setWanState(const char *value)
+{
+    pthread_mutex_lock(&config_mut);
+	parStrncpy(get_parodus_cfg()->wan_state, (value != NULL && strlen(value) != 0) ? value : "Unknown", sizeof(get_parodus_cfg()->wan_state));    
+    pthread_mutex_unlock(&config_mut);
+}
 
 ParodusCfg *get_parodus_cfg(void)
 {
@@ -179,9 +187,6 @@ rbusError_t rbus_getStr(rbusHandle_t handle, const char* param, char** value)
         *value = strdup("xyz");
         return RBUS_ERROR_SUCCESS;
     }
-
-    *value = NULL;
-    return RBUS_ERROR_BUS_ERROR;
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED

@@ -124,9 +124,11 @@ int main( int argc, char **argv)
     registerRbusLogger();
     subscribeRBUSevent();
     regXmidtSendDataMethod();
-	subscribeWanStateEvent();
     #endif
     setDefaultValuesToCfg(cfg);
+	#ifdef ENABLE_WEBCFGBIN
+	subscribeWanStateEvent();
+    #endif	
     if (0 != parseCommandLine(argc,argv,cfg)) {
 		abort();
 	}

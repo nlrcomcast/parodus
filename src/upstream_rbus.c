@@ -201,18 +201,18 @@ void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscr
 		if(strncmp(subscription->eventName, WAN_STATE_EVENT, strlen(WAN_STATE_EVENT)) == 0)
 		{
 			ParodusInfo("Successfully subscribed to %s\n", WAN_STATE_EVENT);
-			/*get orange's data by alias 'orange'*/
+
 			char* value = NULL;
 			int rc = RBUS_ERROR_SUCCESS;
 			if((rc = rbus_getStr(handle, WAN_STATE_EVENT, &value)) == RBUS_ERROR_SUCCESS)
 			{
 				if(value != NULL)
 				{
-					ParodusInfo("metadata wan_state set to : %s\n", value);
+					setWanState(value);
 					lock_metadata_mutex();
-					parStrncpy(get_parodus_cfg()->wan_state, value, sizeof(get_parodus_cfg()->wan_state));
 					packMetaData();
 					unlock_metadata_mutex();
+					ParodusInfo("metadata wan_state set to : %s\n", value);
 					PARODUS_FREE(value);					
 				}
 			}
@@ -279,11 +279,11 @@ void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEve
     if (value) {
         const char *state = rbusValue_GetString(value, NULL);
         if (state) {
-            ParodusInfo("metadata wan_state set to : %s\n", state);
+			setWanState(state);
 			lock_metadata_mutex();
-            parStrncpy(get_parodus_cfg()->wan_state, state, sizeof(get_parodus_cfg()->wan_state));
             packMetaData();
             unlock_metadata_mutex();
+            ParodusInfo("metadata wan_state set to : %s\n", state);			
         }
     } else {
         ParodusError("wanStateEventHandler: value is NULL\n");
@@ -294,7 +294,7 @@ int subscribeWanStateEvent()
 {
     int rc = RBUS_ERROR_SUCCESS;
     ParodusInfo("Subscribing to %s Event\n", WAN_STATE_EVENT);
-    rc = rbusEvent_SubscribeAsync(rbus_Handle, WAN_STATE_EVENT, wanStateEventHandler, subscribeAsyncHandler, "parodusWanState", 10*60);
+    rc = rbusEvent_SubscribeAsync(rbus_Handle, WAN_STATE_EVENT, wanStateEventHandler, subscribeAsyncHandler, "parodusWanState", 10*20);
     if (rc != RBUS_ERROR_SUCCESS) {
         ParodusError("%s subscribe failed: %d - %s\n", WAN_STATE_EVENT, rc, rbusError_ToString(rc));
     }

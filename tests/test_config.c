@@ -462,6 +462,100 @@ void err_setDefaultValuesToCfg()
     setDefaultValuesToCfg(NULL);
 }
 
+
+void test_read_persisted_cpe_service_state_valid()
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    fprintf(fp, "fully-manageable\n");
+    fclose(fp);
+
+    char buf[64] = {0};
+    int rc = read_persisted_cpe_service_state(buf, sizeof(buf));
+    assert_int_equal(rc, 0);
+    assert_string_equal(buf, "fully-manageable");
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_read_persisted_cpe_service_state_invalid()
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    fprintf(fp, "bogus-state\n");
+    fclose(fp);
+
+    char buf[64] = {0};
+    int rc = read_persisted_cpe_service_state(buf, sizeof(buf));
+    assert_int_not_equal(rc, 0);
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_read_persisted_cpe_service_state_nofile()
+{
+    remove(CPE_SERVICE_STATE_FILE);
+    char buf[64] = {0};
+    int rc = read_persisted_cpe_service_state(buf, sizeof(buf));
+    assert_int_not_equal(rc, 0);
+}
+
+void test_read_persisted_cpe_service_state_empty()
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    fclose(fp);
+
+    char buf[64] = {0};
+    int rc = read_persisted_cpe_service_state(buf, sizeof(buf));
+    assert_int_not_equal(rc, 0);
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_write_cpe_service_state_to_file()
+{
+    remove(CPE_SERVICE_STATE_FILE);
+    write_cpe_service_state_to_file("operational");
+
+    char buf[64] = {0};
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "r");
+    assert_non_null(fp);
+    fgets(buf, sizeof(buf), fp);
+    fclose(fp);
+
+    /* Strip newline */
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
+    assert_string_equal(buf, "operational");
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_write_cpe_service_state_to_file_failed()
+{
+    remove(CPE_SERVICE_STATE_FILE);
+    int fd = open(CPE_SERVICE_STATE_FILE,O_CREAT | O_WRONLY,0644);    
+    chmod(CPE_SERVICE_STATE_FILE, 0444); /* read-only */  
+    write_cpe_service_state_to_file("operational");
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_write_cpe_service_state_to_file_null()
+{
+    remove(CPE_SERVICE_STATE_FILE);
+    write_cpe_service_state_to_file(NULL);
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
+void test_setDefaultValuesToCfg_persisted_state()
+{
+    /* Write a valid state to the persistence file */
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    fprintf(fp, "non-operational\n");
+    fclose(fp);
+
+    ParodusCfg *cfg = (ParodusCfg *) malloc(sizeof(ParodusCfg));
+    memset(cfg, 0, sizeof(ParodusCfg));
+    setDefaultValuesToCfg(cfg);
+    assert_string_equal(cfg->cpe_service_state, "non-operational");
+    free(cfg);
+    remove(CPE_SERVICE_STATE_FILE);
+}
+
 void test_parse_num_arg ()
 {
 	assert_int_equal (parse_num_arg ("1234", "1234"), 1234);
@@ -597,6 +691,10 @@ void test_get_algo_mask ()
 	assert_true (get_algo_mask ("ES256:RS256") == (unsigned int) -1);
 #endif	
 }
+void test_setWanState()
+{
+    setWanState(NULL);
+}
 
 /*----------------------------------------------------------------------------*/
 /*                             External Functions                             */
@@ -623,6 +721,15 @@ int main(void)
         //cmocka_unit_test(test_parodusGitVersion),
         cmocka_unit_test(test_setDefaultValuesToCfg),
         cmocka_unit_test(err_setDefaultValuesToCfg),
+        cmocka_unit_test(test_read_persisted_cpe_service_state_valid),
+        cmocka_unit_test(test_read_persisted_cpe_service_state_invalid),
+        cmocka_unit_test(test_read_persisted_cpe_service_state_nofile),
+        cmocka_unit_test(test_read_persisted_cpe_service_state_empty),
+        cmocka_unit_test(test_write_cpe_service_state_to_file),
+        cmocka_unit_test(test_write_cpe_service_state_to_file_failed),
+        cmocka_unit_test(test_write_cpe_service_state_to_file_null),
+        cmocka_unit_test(test_setDefaultValuesToCfg_persisted_state),
+        cmocka_unit_test(test_setWanState),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

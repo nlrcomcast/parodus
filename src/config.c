@@ -40,6 +40,8 @@ pthread_mutex_t cloud_status_mut=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cloud_status_cond=PTHREAD_COND_INITIALIZER;
 
 char webpa_interface[64]={'\0'};
+char wan_state_cache[64]="Unknown";
+char cpe_service_state_cache[64]="unknown";
 
 static ParodusCfg parodusCfg;
 static unsigned int rsa_algorithms = 
@@ -101,6 +103,54 @@ char *get_cloud_status(void)
     }
     pthread_mutex_unlock(&config_mut);
     return status;    
+}
+
+int read_persisted_cpe_service_state(char *buf, size_t buf_size)
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "r");
+    if (fp == NULL)
+        return -1;
+
+    if (fgets(buf, (int)buf_size, fp) == NULL) {
+        ParodusError("File %s is empty, unable to get cpe_service_state\n", CPE_SERVICE_STATE_FILE);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    /* Strip trailing newline */
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len-1] == '\n')
+        buf[len-1] = '\0';
+
+    if (strcmp(buf, "fully-manageable") == 0 ||
+        strcmp(buf, "operational") == 0 ||
+        strcmp(buf, "non-operational") == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        ParodusError("File %s is having invalid data: %s\n", CPE_SERVICE_STATE_FILE, buf);
+        return -1;
+    }
+}
+
+void write_cpe_service_state_to_file(const char *state)
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    if (fp == NULL) {
+        ParodusError("Failed to write cpe_service_state to %s\n", CPE_SERVICE_STATE_FILE);
+        return;
+    }
+    if(state == NULL)
+    {
+        ParodusError("cpe_service_state is NULL, cannot write to %s\n", CPE_SERVICE_STATE_FILE);
+        fclose(fp);
+        return;
+    }
+    fprintf(fp, "%s\n", state);
+    fclose(fp);
 }
 
 const char *get_tok (const char *src, int delim, char *result, int resultsize)
@@ -872,6 +922,15 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 
 	parStrncpy(cfg->wan_state, "Unknown", sizeof(cfg->wan_state));
 	parStrncpy(cfg->cpe_service_state, "unknown", sizeof(cfg->cpe_service_state));
+
+	/* Restore persisted cpe-service-state from /tmp file to handle parodus restart/crash scenarios */
+	{
+		char persisted[64] = {0};
+		if (read_persisted_cpe_service_state(persisted, sizeof(persisted)) == 0) {
+			parStrncpy(cfg->cpe_service_state, persisted, sizeof(cfg->cpe_service_state));
+			ParodusInfo("Restored persisted cpe_service_state: %s\n", cfg->cpe_service_state);
+		}
+	}    
 }
 
 void loadParodusCfg(ParodusCfg * config,ParodusCfg *cfg)
@@ -1142,3 +1201,38 @@ char *getWebpaInterface(void)
 		return webpa_interface;
 }
 
+void setWanState(const char *value)
+{
+    pthread_mutex_lock(&config_mut);
+	parStrncpy(get_parodus_cfg()->wan_state, (value != NULL && strlen(value) != 0) ? value : "Unknown", sizeof(get_parodus_cfg()->wan_state));    
+    pthread_mutex_unlock(&config_mut);
+}
+
+void setCpeServiceState(const char *value)
+{
+    pthread_mutex_lock(&config_mut);
+    parStrncpy(get_parodus_cfg()->cpe_service_state, (value != NULL && strlen(value) != 0) ? value : "unknown", sizeof(get_parodus_cfg()->cpe_service_state));
+    pthread_mutex_unlock(&config_mut);
+}
+
+const char *getWanState(void)
+{
+	#ifdef ENABLE_WEBCFGBIN	
+		pthread_mutex_lock (&config_mut);	
+		parStrncpy(wan_state_cache, get_parodus_cfg()->wan_state, sizeof(wan_state_cache));
+		pthread_mutex_unlock (&config_mut);
+	#endif
+		ParodusPrint("wan_state:%s\n", wan_state_cache);
+    return wan_state_cache;
+}
+
+const char *getCpeServiceState(void)
+{
+	#ifdef ENABLE_WEBCFGBIN	
+		pthread_mutex_lock (&config_mut);	
+		parStrncpy(cpe_service_state_cache, get_parodus_cfg()->cpe_service_state, sizeof(cpe_service_state_cache));
+		pthread_mutex_unlock (&config_mut);
+	#endif
+		ParodusPrint("cpe_service_state:%s\n", cpe_service_state_cache);
+    return cpe_service_state_cache;
+}
