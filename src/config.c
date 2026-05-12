@@ -103,6 +103,43 @@ char *get_cloud_status(void)
     return status;    
 }
 
+int read_persisted_cpe_service_state(char *buf, size_t buf_size)
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "r");
+    if (fp == NULL)
+        return -1;
+
+    if (fgets(buf, (int)buf_size, fp) == NULL) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    /* Strip trailing newline */
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len-1] == '\n')
+        buf[len-1] = '\0';
+
+    if (strcmp(buf, "fully-manageable") == 0 ||
+        strcmp(buf, "operational") == 0 ||
+        strcmp(buf, "non-operational") == 0)
+    {
+        return 0;
+    }
+    return -1;
+}
+
+void write_cpe_service_state_to_file(const char *state)
+{
+    FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
+    if (fp == NULL) {
+        ParodusError("Failed to write cpe_service_state to %s\n", CPE_SERVICE_STATE_FILE);
+        return;
+    }
+    fprintf(fp, "%s\n", state);
+    fclose(fp);
+}
+
 const char *get_tok (const char *src, int delim, char *result, int resultsize)
 {
 	int i;
@@ -872,6 +909,15 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 
 	parStrncpy(cfg->wan_state, "Unknown", sizeof(cfg->wan_state));
 	parStrncpy(cfg->cpe_service_state, "unknown", sizeof(cfg->cpe_service_state));
+
+	/* Attempt to restore persisted cpe-service-state */
+	{
+		char persisted[64] = {0};
+		if (read_persisted_cpe_service_state(persisted, sizeof(persisted)) == 0) {
+			parStrncpy(cfg->cpe_service_state, persisted, sizeof(cfg->cpe_service_state));
+			ParodusInfo("Restored persisted cpe_service_state: %s\n", cfg->cpe_service_state);
+		}
+	}
 }
 
 void loadParodusCfg(ParodusCfg * config,ParodusCfg *cfg)

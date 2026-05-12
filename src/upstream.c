@@ -274,6 +274,7 @@ void extractCpeServiceState(const char *dest)
     {
         parStrncpy(get_parodus_cfg()->cpe_service_state, new_state, sizeof(get_parodus_cfg()->cpe_service_state));
         ParodusInfo("metadata cpe_service_state set to : %s\n", get_parodus_cfg()->cpe_service_state);
+        write_cpe_service_state_to_file(new_state);
         packMetaData();
     }
     unlock_metadata_mutex();

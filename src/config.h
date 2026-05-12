@@ -60,6 +60,7 @@ extern "C" {
 #define WAN_IPV4_ADDRESS        "wan-ipv4-address"
 #define WAN_STATE               "wan-state"
 #define CPE_SERVICE_STATE       "cpe-service-state"
+#define CPE_SERVICE_STATE_FILE  "/tmp/parodus_cpe_service_state"
 
 #define PROTOCOL_VALUE 					"PARODUS-2.0"
 #define WEBPA_PATH_URL                  "/api/v2/device"
@@ -160,6 +161,8 @@ void reset_cloud_disconnect_reason(ParodusCfg *cfg);
 char *getWebpaInterface(void);
 void set_cloud_status(char *status);
 char *get_cloud_status(void);
+int read_persisted_cpe_service_state(char *buf, size_t buf_size);
+void write_cpe_service_state_to_file(const char *state);
 int get_parodus_init();
 /**
  * parse a webpa url. Extract the server address, the port
