@@ -58,6 +58,9 @@ extern "C" {
 #define BOOT_RETRY_WAIT         "boot-time-retry-wait"
 #define WEBPA_INTERFACE_LABEL   "webpa-interface-label"
 #define WAN_IPV4_ADDRESS        "wan-ipv4-address"
+#define WAN_STATE               "wan-state"
+#define CPE_SERVICE_STATE       "cpe-service-state"
+#define CPE_SERVICE_STATE_FILE  "/tmp/parodus_cpe_service_state"
 
 #define PROTOCOL_VALUE 					"PARODUS-2.0"
 #define WEBPA_PATH_URL                  "/api/v2/device"
@@ -120,6 +123,8 @@ typedef struct
 	unsigned int boot_retry_wait;
     char webpa_interface_label[64];
     char wan_ipv4_address[64];
+    char wan_state[64];
+    char cpe_service_state[64];
 #ifdef FEATURE_DNS_QUERY
     char *record_jwt_file;
 #endif
@@ -154,8 +159,14 @@ char *get_token_application(void) ;
 void set_cloud_disconnect_reason(ParodusCfg *cfg, char *disconn_reason);
 void reset_cloud_disconnect_reason(ParodusCfg *cfg);
 char *getWebpaInterface(void);
+const char *getCpeServiceState(void);
+const char *getWanState(void);
+void setWanState(const char *state);
+void setCpeServiceState(const char *state);
 void set_cloud_status(char *status);
 char *get_cloud_status(void);
+int read_persisted_cpe_service_state(char *buf, size_t buf_size);
+void write_cpe_service_state_to_file(const char *state);
 int get_parodus_init();
 /**
  * parse a webpa url. Extract the server address, the port

@@ -18,6 +18,7 @@
 #include <string.h>
 #include "stdlib.h"
 #include "config.h"
+#include "upstream.h"
 #include "auth_token.h"
 #include "connection.h"
 #include "conn_interface.h"
@@ -125,6 +126,9 @@ int main( int argc, char **argv)
     regXmidtSendDataMethod();
     #endif
     setDefaultValuesToCfg(cfg);
+	#ifdef ENABLE_WEBCFGBIN
+	subscribeWanStateEvent();
+    #endif	
     if (0 != parseCommandLine(argc,argv,cfg)) {
 		abort();
 	}
