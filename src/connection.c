@@ -834,9 +834,13 @@ int createNopollConnection(noPollCtx *ctx, server_list_t *server_list)
 	ParodusPrint("LastReasonStatus reset after successful connection\n");
 	setMessageHandlers();
     stop_conn_in_progress ();
+    #if defined(IGNITEAPP_DISTRO)
         lock_metadata_mutex();
+    #endif
         packMetaData();
+    #if defined(IGNITEAPP_DISTRO)        
         unlock_metadata_mutex();
+    #endif    
 	ParodusPrint("set cloud_status\n");
 	set_cloud_status(CLOUD_STATUS_ONLINE);
 	ParodusInfo("cloud_status set as %s after successful connection\n", get_cloud_status());

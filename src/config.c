@@ -40,8 +40,10 @@ pthread_mutex_t cloud_status_mut=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cloud_status_cond=PTHREAD_COND_INITIALIZER;
 
 char webpa_interface[64]={'\0'};
+#if defined(IGNITEAPP_DISTRO)
 char wan_state_cache[64]="Unknown";
 char cpe_service_state_cache[64]="unknown";
+#endif
 
 static ParodusCfg parodusCfg;
 static unsigned int rsa_algorithms = 
@@ -105,6 +107,7 @@ char *get_cloud_status(void)
     return status;    
 }
 
+#if defined(IGNITEAPP_DISTRO)
 int read_persisted_cpe_service_state(char *buf, size_t buf_size)
 {
     FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "r");
@@ -152,6 +155,7 @@ void write_cpe_service_state_to_file(const char *state)
     fprintf(fp, "%s\n", state);
     fclose(fp);
 }
+#endif
 
 const char *get_tok (const char *src, int delim, char *result, int resultsize)
 {
@@ -920,6 +924,7 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 	cfg->cloud_status = CLOUD_STATUS_OFFLINE;
 	ParodusInfo("Default cloud_status is %s\n", cfg->cloud_status);
 
+    #if defined(IGNITEAPP_DISTRO)
 	parStrncpy(cfg->wan_state, "Unknown", sizeof(cfg->wan_state));
 	parStrncpy(cfg->cpe_service_state, "unknown", sizeof(cfg->cpe_service_state));
 
@@ -930,7 +935,8 @@ void setDefaultValuesToCfg(ParodusCfg *cfg)
 			parStrncpy(cfg->cpe_service_state, persisted, sizeof(cfg->cpe_service_state));
 			ParodusInfo("Restored persisted cpe_service_state: %s\n", cfg->cpe_service_state);
 		}
-	}    
+    }
+    #endif
 }
 
 void loadParodusCfg(ParodusCfg * config,ParodusCfg *cfg)
@@ -1201,6 +1207,7 @@ char *getWebpaInterface(void)
 		return webpa_interface;
 }
 
+#if defined(IGNITEAPP_DISTRO)
 void setWanState(const char *value)
 {
     pthread_mutex_lock(&config_mut);
@@ -1236,3 +1243,4 @@ const char *getCpeServiceState(void)
 		ParodusPrint("cpe_service_state:%s\n", cpe_service_state_cache);
     return cpe_service_state_cache;
 }
+#endif
