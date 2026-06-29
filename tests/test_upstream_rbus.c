@@ -52,8 +52,10 @@ extern void registerRbusLogger(void);
 extern void subscribeRBUSevent(void);
 extern void processWebconfigUpstreamEvent(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
 extern void subscribeAsyncHandler(rbusHandle_t handle, rbusEventSubscription_t* subscription, rbusError_t error);
+#if defined(IGNITEAPP_DISTRO)
 extern void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
 extern int subscribeWanStateEvent(void);
+#endif
 #ifdef WAN_FAILOVER_SUPPORTED
 extern int subscribeCurrentActiveInterfaceEvent(void);
 extern void eventReceiveHandler(rbusHandle_t rbus_Handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
@@ -64,12 +66,14 @@ extern void eventReceiveHandler(rbusHandle_t rbus_Handle, rbusEvent_t const* eve
 /*----------------------------------------------------------------------------*/
 pthread_mutex_t config_mut=PTHREAD_MUTEX_INITIALIZER;
 char wan_state_cache[64]="Unknown";
+#if defined(IGNITEAPP_DISTRO)
 void setWanState(const char *value)
 {
     pthread_mutex_lock(&config_mut);
 	parStrncpy(get_parodus_cfg()->wan_state, (value != NULL && strlen(value) != 0) ? value : "Unknown", sizeof(get_parodus_cfg()->wan_state));    
     pthread_mutex_unlock(&config_mut);
 }
+#endif
 
 ParodusCfg *get_parodus_cfg(void)
 {
@@ -187,6 +191,8 @@ rbusError_t rbus_getStr(rbusHandle_t handle, const char* param, char** value)
         *value = strdup("xyz");
         return RBUS_ERROR_SUCCESS;
     }
+
+    return RBUS_ERROR_BUS_ERROR;
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
@@ -415,13 +421,18 @@ static void test_subscribeAsyncHandler(void **state)
     (void)state;
     rbusEventSubscription_t sub;
     sub.eventName = "Device.X_RDK_WanManager.WanState";
+#if defined(IGNITEAPP_DISTRO)
     expect_function_call(packMetaData);
+#endif
     /* Just verify it doesn't crash */
     subscribeAsyncHandler(NULL, &sub, RBUS_ERROR_SUCCESS);
+#if defined(IGNITEAPP_DISTRO)
     assert_string_equal(parodusCfg.wan_state, "xyz");
+#endif
     subscribeAsyncHandler(NULL, &sub, RBUS_ERROR_BUS_ERROR);
 }
 
+#if defined(IGNITEAPP_DISTRO)
 /* 4.1 Test wanStateEventHandler — valid state string */
 static void test_wanStateEventHandler_valid(void **state)
 {
@@ -476,6 +487,7 @@ static void test_subscribeWanStateEvent_failure(void **state)
     int rc = subscribeWanStateEvent();
     assert_int_equal(rc, RBUS_ERROR_BUS_ERROR);
 }
+#endif
 
 #ifdef WAN_FAILOVER_SUPPORTED
 /* 5.1 Test subscribeCurrentActiveInterfaceEvent success/failure */
@@ -604,10 +616,12 @@ int main(void)
         cmocka_unit_test(test_processWebconfigUpstreamEvent_valid_partner_fail),
         cmocka_unit_test(test_processWebconfigUpstreamEvent_invalid_wrp),
         cmocka_unit_test(test_subscribeAsyncHandler),
+    #if defined(IGNITEAPP_DISTRO)
         cmocka_unit_test(test_wanStateEventHandler_valid),
         cmocka_unit_test(test_wanStateEventHandler_null_value),
         cmocka_unit_test(test_subscribeWanStateEvent_success),
         cmocka_unit_test(test_subscribeWanStateEvent_failure),
+    #endif
 #ifdef WAN_FAILOVER_SUPPORTED
         cmocka_unit_test(test_subscribeCurrentActiveInterfaceEvent_success),
         cmocka_unit_test(test_subscribeCurrentActiveInterfaceEvent_failure),

@@ -55,6 +55,7 @@ pthread_mutex_t config_mut=PTHREAD_MUTEX_INITIALIZER;
 /*----------------------------------------------------------------------------*/
 char wan_state_cache[64]="Unknown";
 char cpe_service_state_cache[64]="unknown";
+#if defined(IGNITEAPP_DISTRO)
 void setCpeServiceState(const char *value)
 {
     pthread_mutex_lock(&config_mut);
@@ -88,6 +89,7 @@ void write_cpe_service_state_to_file(const char *state)
 {
     (void)state;
 }
+#endif
 
 noPollConn *get_global_conn()
 {
@@ -932,8 +934,10 @@ void err_processUpstreamMsg_deviceID()
 
 void test_dummy()
 {
+#if defined(IGNITEAPP_DISTRO)
     setCpeServiceState(NULL);
     write_cpe_service_state_to_file(NULL);
+#endif
     assert_true(1);
 }
 /*----------------------------------------------------------------------------*/

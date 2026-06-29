@@ -33,7 +33,11 @@
 /*----------------------------------------------------------------------------*/
 /*                                   Macros                                   */
 /*----------------------------------------------------------------------------*/
+#if defined(IGNITEAPP_DISTRO)
 #define METADATA_COUNT 					14
+#else
+#define METADATA_COUNT 					12
+#endif
 #define PARODUS_SERVICE_NAME			"parodus"
 /*----------------------------------------------------------------------------*/
 /*                            File Scoped Variables                           */
@@ -48,7 +52,7 @@ UpStreamMsg *UpStreamMsgQ = NULL;
 pthread_mutex_t nano_mut=PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t nano_con=PTHREAD_COND_INITIALIZER;
-
+#if defined(IGNITEAPP_DISTRO)
 static pthread_mutex_t metadata_mut=PTHREAD_MUTEX_INITIALIZER;
 
 void lock_metadata_mutex(void)
@@ -60,7 +64,7 @@ void unlock_metadata_mutex(void)
 {
     pthread_mutex_unlock(&metadata_mut);
 }
-
+#endif
 UpStreamMsg * get_global_UpStreamMsgQ(void)
 {
     return UpStreamMsgQ;
@@ -107,9 +111,12 @@ void packMetaData()
             {WEBPA_PROTOCOL, get_parodus_cfg()->webpa_protocol},
             {WEBPA_UUID,get_parodus_cfg()->webpa_uuid},
             {WEBPA_INTERFACE, getWebpaInterface()},
-            {PARTNER_ID, get_parodus_cfg()->partner_id},
+            {PARTNER_ID, get_parodus_cfg()->partner_id}
+#if defined(IGNITEAPP_DISTRO)
+            ,
             {WAN_STATE, getWanState()},
             {CPE_SERVICE_STATE, getCpeServiceState()}
+#endif
         };
     const data_t metapack = {METADATA_COUNT, meta_pack};
 
@@ -227,6 +234,7 @@ void *handle_upstream()
     return 0;
 }
 
+#if defined(IGNITEAPP_DISTRO)
 void extractAndSetCpeServiceState(const char *dest)
 {
     if (dest == NULL) 
@@ -286,6 +294,7 @@ void extractAndSetCpeServiceState(const char *dest)
         ParodusPrint("CPE service state is already %s, no update needed\n", new_state);
     }
 }
+#endif
 
 void *processUpstreamMessage()
 {		
@@ -399,10 +408,12 @@ void *processUpstreamMessage()
                 else if(msgType == WRP_MSG_TYPE__EVENT)
                 {
                     (msg->u.event.headers != NULL && msg->u.event.headers->headers[0] != NULL && msg->u.event.headers->headers[1] != NULL) ? ParodusInfo(" Received upstream event data: dest '%s' traceParent: %s traceState: %s\n", msg->u.event.dest, msg->u.event.headers->headers[0], msg->u.event.headers->headers[1]) : ParodusInfo(" Received upstream event data: dest '%s'\n", msg->u.event.dest);
-		    if(msg->u.event.transaction_uuid != NULL) {
+            if(msg->u.event.transaction_uuid != NULL) {
 			    ParodusInfo("transaction_uuid in event: %s\n", msg->u.event.transaction_uuid);
 		    }	    
+            #if defined(IGNITEAPP_DISTRO)
                     extractAndSetCpeServiceState(msg->u.event.dest);
+            #endif
                     partners_t *partnersList = NULL;
                     int j = 0;
 
@@ -692,12 +703,16 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	size_t encodedSize;
 	bool close_retry = false;
 	int sendRetStatus = 1;
+#if defined(IGNITEAPP_DISTRO)    
 	//appending response with metadata 			
 	lock_metadata_mutex();
+#endif    
 	if(metaPackSize > 0)
 	{
 	   	encodedSize = appendEncodedData( &appendData, *resp_bytes, resp_size, metadataPack, metaPackSize );
+#if defined(IGNITEAPP_DISTRO)        
 	   	unlock_metadata_mutex();
+#endif        
 	   	ParodusPrint("metadata appended upstream response %s\n", (char *)appendData);
 	   	ParodusPrint("encodedSize after appending :%zu\n", encodedSize);
 	   		   
@@ -729,7 +744,9 @@ int sendUpstreamMsgToServer(void **resp_bytes, size_t resp_size)
 	}
 	else
 	{
+        #if defined(IGNITEAPP_DISTRO)
 		unlock_metadata_mutex();
+        #endif
 		ParodusError("Failed to send upstream as metadata packing is not successful\n");
 		sendRetStatus = 1;
 	}

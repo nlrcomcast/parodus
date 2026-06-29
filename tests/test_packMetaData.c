@@ -28,7 +28,11 @@
 #include "wrp-c.h"
 #include "../src/client_list.h"
 
+#if defined(IGNITEAPP_DISTRO)
 #define METADATA_COUNT 14
+#else
+#define METADATA_COUNT 12
+#endif
 
 /* External variables defined in upstream.c */
 extern void *metadataPack;
@@ -106,8 +110,10 @@ void test_packMetaData_success(void)
     parStrncpy(cfg.webpa_uuid, "1234567-345456546", sizeof(cfg.webpa_uuid));
     parStrncpy(cfg.webpa_interface_used, "eth0", sizeof(cfg.webpa_interface_used));
     parStrncpy(cfg.partner_id, "comcast", sizeof(cfg.partner_id));
+#if defined(IGNITEAPP_DISTRO)
     parStrncpy(cfg.wan_state, "up", sizeof(cfg.wan_state));
     parStrncpy(cfg.cpe_service_state, "active", sizeof(cfg.cpe_service_state));
+#endif
     cfg.boot_time = 423457;
 
     set_parodus_cfg(&cfg);
@@ -150,8 +156,12 @@ void test_packMetaData_empty_fields(void)
 
 void test_packMetaData_field_count(void)
 {
-    /* Verify METADATA_COUNT matches the expected 14 fields */
+    /* Verify METADATA_COUNT matches expected fields for distro */
+#if defined(IGNITEAPP_DISTRO)
     CU_ASSERT_EQUAL(METADATA_COUNT, 14);
+#else
+    CU_ASSERT_EQUAL(METADATA_COUNT, 12);
+#endif
 }
 
 /*
@@ -192,12 +202,16 @@ void test_packMetaData_unpack_verify(void)
     parStrncpy(cfg.webpa_uuid, "1234567-345456546", sizeof(cfg.webpa_uuid));
     parStrncpy(cfg.webpa_interface_used, "eth0", sizeof(cfg.webpa_interface_used));
     parStrncpy(cfg.partner_id, "comcast", sizeof(cfg.partner_id));
+#if defined(IGNITEAPP_DISTRO)
     parStrncpy(cfg.wan_state, "Serviceable", sizeof(cfg.wan_state));
     parStrncpy(cfg.cpe_service_state, "fully-manageable", sizeof(cfg.cpe_service_state));
+#endif
     cfg.boot_time = 423457;
     set_parodus_cfg(&cfg);
+#if defined(IGNITEAPP_DISTRO)
     setWanState("Serviceable");
     setCpeServiceState("fully-manageable");
+#endif
     packMetaData();
 
     CU_ASSERT(metaPackSize > 0);
@@ -277,7 +291,7 @@ void test_packMetaData_unpack_verify(void)
     val = find_map_value(map, PARTNER_ID);
     CU_ASSERT_PTR_NOT_NULL(val);
     if (val) { CU_ASSERT_STRING_EQUAL(val, "comcast"); free(val); }
-	#ifdef ENABLE_WEBCFGBIN	
+#if defined(IGNITEAPP_DISTRO)
     val = find_map_value(map, WAN_STATE);
     CU_ASSERT_PTR_NOT_NULL(val);
     if (val) { CU_ASSERT_STRING_EQUAL(val, "Serviceable"); free(val); }
@@ -285,15 +299,9 @@ void test_packMetaData_unpack_verify(void)
     val = find_map_value(map, CPE_SERVICE_STATE);
     CU_ASSERT_PTR_NOT_NULL(val);
     if (val) { CU_ASSERT_STRING_EQUAL(val, "fully-manageable"); free(val); }
-    #else
-    val = find_map_value(map, WAN_STATE);
-    CU_ASSERT_PTR_NOT_NULL(val);
-    if (val) { CU_ASSERT_STRING_EQUAL(val, "Unknown"); free(val); }
-
-    val = find_map_value(map, CPE_SERVICE_STATE);
-    CU_ASSERT_PTR_NOT_NULL(val);
-    if (val) { CU_ASSERT_STRING_EQUAL(val, "unknown"); free(val); }    
-    #endif
+#else
+    /* WAN_STATE and CPE_SERVICE_STATE are Ignite-only keys. */
+#endif
 
     msgpack_unpacked_destroy(&obj1);
     msgpack_unpacked_destroy(&obj2);
@@ -306,6 +314,7 @@ void test_packMetaData_unpack_verify(void)
     }
 }
 
+#if defined(IGNITEAPP_DISTRO)
 void test_extractAndSetCpeServiceState_operational(void)
 {
     // Valid states
@@ -354,6 +363,7 @@ void test_extractAndSetCpeServiceState_Invalid_Format3(void)
     extractAndSetCpeServiceState("xyz");
     CU_ASSERT_STRING_EQUAL(getCpeServiceState(), "fully-manageable");    
 }
+#endif
 
 void test_dummy()
 {
@@ -377,6 +387,7 @@ void add_suites(CU_pSuite *suite)
     CU_add_test(*suite, "Test metadata packing with empty fields", test_packMetaData_empty_fields);
     CU_add_test(*suite, "Test metadata field count", test_packMetaData_field_count);
     CU_add_test(*suite, "Test unpack metadata and verify fields", test_packMetaData_unpack_verify);
+#if defined(IGNITEAPP_DISTRO)
     CU_add_test(*suite, "Test extractAndSetCpeServiceState operational", test_extractAndSetCpeServiceState_operational);
     CU_add_test(*suite, "Test extractAndSetCpeServiceState", test_extractAndSetCpeServiceState);
     CU_add_test(*suite, "Test extractAndSetCpeServiceState Invalid", test_extractAndSetCpeServiceState_Invalid);
@@ -384,6 +395,7 @@ void add_suites(CU_pSuite *suite)
     CU_add_test(*suite, "Test extractAndSetCpeServiceState Invalid Format 1", test_extractAndSetCpeServiceState_Invalid_Format1);
     CU_add_test(*suite, "Test extractCpeServiceState Invalid Format 2", test_extractAndSetCpeServiceState_Invalid_Format2);
     CU_add_test(*suite, "Test extractCpeServiceState Invalid Format 3", test_extractAndSetCpeServiceState_Invalid_Format3);
+#endif
     CU_add_test(*suite, "Test Dummy for code coverage", test_dummy);
 }
 

@@ -462,7 +462,7 @@ void err_setDefaultValuesToCfg()
     setDefaultValuesToCfg(NULL);
 }
 
-
+#if defined(IGNITEAPP_DISTRO)
 void test_read_persisted_cpe_service_state_valid()
 {
     FILE *fp = fopen(CPE_SERVICE_STATE_FILE, "w");
@@ -555,6 +555,7 @@ void test_setDefaultValuesToCfg_persisted_state()
     free(cfg);
     remove(CPE_SERVICE_STATE_FILE);
 }
+#endif
 
 void test_parse_num_arg ()
 {
@@ -691,10 +692,12 @@ void test_get_algo_mask ()
 	assert_true (get_algo_mask ("ES256:RS256") == (unsigned int) -1);
 #endif	
 }
+#if defined(IGNITEAPP_DISTRO)
 void test_setWanState()
 {
     setWanState(NULL);
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 /*                             External Functions                             */
@@ -721,6 +724,7 @@ int main(void)
         //cmocka_unit_test(test_parodusGitVersion),
         cmocka_unit_test(test_setDefaultValuesToCfg),
         cmocka_unit_test(err_setDefaultValuesToCfg),
+    #if defined(IGNITEAPP_DISTRO)
         cmocka_unit_test(test_read_persisted_cpe_service_state_valid),
         cmocka_unit_test(test_read_persisted_cpe_service_state_invalid),
         cmocka_unit_test(test_read_persisted_cpe_service_state_nofile),
@@ -730,6 +734,7 @@ int main(void)
         cmocka_unit_test(test_write_cpe_service_state_to_file_null),
         cmocka_unit_test(test_setDefaultValuesToCfg_persisted_state),
         cmocka_unit_test(test_setWanState),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

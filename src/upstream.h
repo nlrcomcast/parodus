@@ -26,7 +26,7 @@
 
 #include <pthread.h>
 #include <wrp-c.h>
-#ifdef ENABLE_WEBCFGBIN
+#if defined(ENABLE_WEBCFGBIN) || defined(IGNITEAPP_DISTRO)
 #include <rbus.h>
 #endif
 #ifdef __cplusplus
@@ -48,8 +48,10 @@ typedef struct UpStreamMsg__
 /*----------------------------------------------------------------------------*/
 
 void packMetaData();
+#if defined(IGNITEAPP_DISTRO)
 void lock_metadata_mutex(void);
 void unlock_metadata_mutex(void);
+#endif
 void *handle_upstream();
 void *processUpstreamMessage();
 void registerRBUSlistener();
@@ -61,7 +63,7 @@ void set_global_UpStreamMsgQ(UpStreamMsg * UpStreamQ);
 #ifdef WAN_FAILOVER_SUPPORTED
 int subscribeCurrentActiveInterfaceEvent();
 #endif
-#ifdef ENABLE_WEBCFGBIN
+#if defined(ENABLE_WEBCFGBIN) && defined(IGNITEAPP_DISTRO)
 int subscribeWanStateEvent();
 void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
 #endif
@@ -69,7 +71,9 @@ UpStreamMsg * get_global_UpStreamMsgQ(void);
 pthread_cond_t *get_global_nano_con(void);
 pthread_mutex_t *get_global_nano_mut(void);
 void clear_metadata();
+#if defined(IGNITEAPP_DISTRO)
 void extractAndSetCpeServiceState(const char *dest);
+#endif
 #ifdef __cplusplus
 }
 #endif

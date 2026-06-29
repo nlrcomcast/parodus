@@ -18,7 +18,9 @@
 #include <string.h>
 #include "stdlib.h"
 #include "config.h"
+#if defined(IGNITEAPP_DISTRO)
 #include "upstream.h"
+#endif
 #include "auth_token.h"
 #include "connection.h"
 #include "conn_interface.h"
@@ -126,7 +128,7 @@ int main( int argc, char **argv)
     regXmidtSendDataMethod();
     #endif
     setDefaultValuesToCfg(cfg);
-	#ifdef ENABLE_WEBCFGBIN
+	#if defined(ENABLE_WEBCFGBIN) && defined(IGNITEAPP_DISTRO)
 	subscribeWanStateEvent();
     #endif	
     if (0 != parseCommandLine(argc,argv,cfg)) {

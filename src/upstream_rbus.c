@@ -36,7 +36,9 @@
 #ifdef WAN_FAILOVER_SUPPORTED
 #define WEBPA_INTERFACE "Device.X_RDK_WanManager.CurrentActiveInterface"
 #endif
+#if defined(IGNITEAPP_DISTRO)
 #define WAN_STATE_EVENT "Device.X_RDK_WanManager.WanState"
+#endif
 
 rbusHandle_t rbus_Handle;
 rbusError_t err;
@@ -196,6 +198,7 @@ void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscr
 {
 	(void)handle;
 	ParodusInfo("subscribeAsyncHandler event %s, error %d - %s\n",subscription->eventName, error, rbusError_ToString(error));
+	#if defined(IGNITEAPP_DISTRO)
 	if(error == RBUS_ERROR_SUCCESS)
 	{
 		if(strncmp(subscription->eventName, WAN_STATE_EVENT, strlen(WAN_STATE_EVENT)) == 0)
@@ -223,6 +226,7 @@ void subscribeAsyncHandler( rbusHandle_t handle, rbusEventSubscription_t* subscr
 
 		}
 	}
+	#endif
 }
 
 #ifdef WAN_FAILOVER_SUPPORTED
@@ -271,6 +275,7 @@ void eventReceiveHandler( rbusHandle_t rbus_Handle, rbusEvent_t const* event, rb
 }
 #endif
 
+#if defined(IGNITEAPP_DISTRO)
 void wanStateEventHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     (void)handle;
@@ -300,3 +305,4 @@ int subscribeWanStateEvent()
     }
     return rc;
 }
+#endif
